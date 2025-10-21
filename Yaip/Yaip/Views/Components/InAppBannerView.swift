@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import Combine
 
 /// In-app notification banner (shown when app is in foreground)
 struct InAppBannerView: View {

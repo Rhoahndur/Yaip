@@ -85,12 +85,32 @@ class ChatViewModel: ObservableObject {
         // Listen to messages
         messageListener = messageService.listenToMessages(conversationID: conversationID) { [weak self] messages in
             Task { @MainActor in
-                self?.messages = messages
-                self?.isLoading = false
+                guard let self = self else { return }
+                
+                let oldMessages = self.messages
+                self.messages = messages
+                self.isLoading = false
                 
                 // Save to local storage
                 for message in messages {
-                    try? self?.localStorage.saveMessage(message)
+                    try? self.localStorage.saveMessage(message)
+                }
+                
+                // Auto-mark new unread messages as read (if we're viewing the chat)
+                guard let userID = self.authManager.currentUserID else { return }
+                
+                let newMessages = messages.filter { newMsg in
+                    !oldMessages.contains(where: { $0.id == newMsg.id })
+                }
+                
+                // Mark any new messages from others as read immediately
+                let unreadFromOthers = newMessages.filter { msg in
+                    msg.senderID != userID && !msg.readBy.contains(userID)
+                }
+                
+                if !unreadFromOthers.isEmpty {
+                    print("📖 Auto-marking \(unreadFromOthers.count) new messages as read")
+                    self.markAsRead()
                 }
             }
         }

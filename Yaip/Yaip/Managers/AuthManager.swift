@@ -89,7 +89,7 @@ class AuthManager: ObservableObject {
                     }
                     print("✅ User profile loaded successfully")
                 } catch {
-                    print("❌ Decoding error: \(error)")
+                    // Decoding failed (likely missing optional fields) - use fallback construction
                     
                     // Fallback: manually construct User from raw data
                     guard let data = snapshot.data(),
@@ -108,7 +108,7 @@ class AuthManager: ObservableObject {
                         email: email,
                         profileImageURL: data["profileImageURL"] as? String,
                         status: UserStatus(rawValue: data["status"] as? String ?? "online") ?? .online,
-                        lastSeen: (data["lastSeen"] as? Timestamp)?.dateValue() ?? Date(),
+                        lastSeen: (data["lastSeen"] as? Timestamp)?.dateValue(),  // Now optional
                         fcmToken: data["fcmToken"] as? String,
                         createdAt: (data["createdAt"] as? Timestamp)?.dateValue() ?? Date()
                     )
@@ -117,7 +117,7 @@ class AuthManager: ObservableObject {
                         self.user = fallbackUser
                         self.isAuthenticated = true
                     }
-                    print("✅ Used fallback user construction")
+                    // Fallback user construction successful (no log needed)
                 }
             } catch {
                 print("❌ Error fetching user profile: \(error.localizedDescription)")
@@ -168,17 +168,15 @@ class AuthManager: ObservableObject {
     }
     
     /// Sign out
-    func signOut() throws {
+    func signOut() async throws {
         // Set user offline and stop message listener before signing out
         if let userID = currentUserID {
-            Task {
-                try? await presenceService.setOffline(userID: userID)
-                await MessageListenerService.shared.stopListening()
-            }
+            try? await presenceService.setOffline(userID: userID)
+            await MessageListenerService.shared.stopListening()
         }
         
         try Auth.auth().signOut()
-        DispatchQueue.main.async {
+        await MainActor.run {
             self.user = nil
             self.isAuthenticated = false
         }

@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import FirebaseFirestore
 
 struct ChatView: View {
     let conversation: Conversation
@@ -15,6 +16,7 @@ struct ChatView: View {
     @State private var showingDetail = false
     @State private var otherUserStatus: UserStatus = .offline
     @State private var otherUserLastSeen: Date?
+    @State private var statusListener: ListenerRegistration?
     
     init(conversation: Conversation) {
         self.conversation = conversation
@@ -52,7 +54,9 @@ struct ChatView: View {
                                     GroupMessageBubble(
                                         message: message,
                                         senderName: viewModel.getSenderName(for: message.senderID),
-                                        isFromCurrentUser: message.senderID == authManager.currentUserID
+                                        isFromCurrentUser: message.senderID == authManager.currentUserID,
+                                        conversation: conversation,
+                                        currentUserID: authManager.currentUserID ?? ""
                                     )
                                     .id(message.id)
                                 } else {
@@ -134,6 +138,10 @@ struct ChatView: View {
             viewModel.startListening()
             viewModel.markAsRead()
             
+            // Tell MessageListenerService we're viewing this conversation
+            // This suppresses notifications for messages in this chat
+            MessageListenerService.shared.setCurrentlyViewing(conversationID: conversation.id)
+            
             // Load online status for 1-on-1 chats
             if conversation.type == .oneOnOne {
                 Task {
@@ -143,6 +151,13 @@ struct ChatView: View {
         }
         .onDisappear {
             viewModel.stopListening()
+            
+            // Tell MessageListenerService we're no longer viewing this conversation
+            MessageListenerService.shared.setCurrentlyViewing(conversationID: nil)
+            
+            // Clean up status listener
+            statusListener?.remove()
+            statusListener = nil
         }
         .onTapGesture {
             // Dismiss keyboard when tapping outside
@@ -156,6 +171,7 @@ struct ChatView: View {
             return
         }
         
+        // First, fetch initial user data
         do {
             let user = try await UserService.shared.fetchUser(id: otherUserID)
             otherUserStatus = user.status
@@ -163,6 +179,26 @@ struct ChatView: View {
         } catch {
             print("Error loading user status: \(error)")
         }
+        
+        // 🔥 Set up real-time status listener
+        setupStatusListener(for: otherUserID)
+    }
+    
+    private func setupStatusListener(for userID: String) {
+        // Remove any existing listener
+        statusListener?.remove()
+        
+        // Set up real-time listener for user status
+        statusListener = PresenceService.shared.listenToPresence(userID: userID) { status, lastSeen in
+            DispatchQueue.main.async {
+                self.otherUserStatus = status
+                if let lastSeen = lastSeen {
+                    self.otherUserLastSeen = lastSeen
+                }
+            }
+        }
+        
+        print("🔔 Real-time status listener started in ChatView for user: \(userID)")
     }
 }
 

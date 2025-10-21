@@ -17,6 +17,8 @@ class MessageListenerService: ObservableObject {
     private var conversationListeners: [String: ListenerRegistration] = [:]
     private let db = Firestore.firestore()
     private var currentUserID: String?
+    private var processedMessageIDs = Set<String>() // Deduplicate notifications
+    private var currentlyViewingConversationID: String? // Track which chat is open
     
     private init() {}
     
@@ -27,7 +29,11 @@ class MessageListenerService: ObservableObject {
         // Stop any existing listeners
         stopAllListeners()
         
+        // Clear processed messages when restarting
+        processedMessageIDs.removeAll()
+        
         print("🔊 Starting message listeners for \(conversations.count) conversations")
+        print("   Current user: \(userID)")
         
         // Set up listener for each conversation
         for conversation in conversations {
@@ -39,7 +45,10 @@ class MessageListenerService: ObservableObject {
     /// Start listening to a specific conversation
     private func startListeningToConversation(conversationID: String) {
         // Don't set up duplicate listeners
-        guard conversationListeners[conversationID] == nil else { return }
+        guard conversationListeners[conversationID] == nil else { 
+            print("⏭️ Already listening to: \(conversationID)")
+            return
+        }
         
         // Get the last message timestamp to only listen for NEW messages
         let now = Date()
@@ -56,11 +65,16 @@ class MessageListenerService: ObservableObject {
                     return
                 }
                 
-                guard let documents = snapshot?.documents else { return }
+                guard let snapshot = snapshot else { return }
+                
+                // Only process document ADDITIONS (not modifications or deletions)
+                let newDocuments = snapshot.documentChanges.filter { $0.type == .added }
+                
+                print("📨 Snapshot received: \(newDocuments.count) new messages in \(conversationID)")
                 
                 // Process new messages
-                for document in documents {
-                    if let message = try? document.data(as: Message.self) {
+                for change in newDocuments {
+                    if let message = try? change.document.data(as: Message.self) {
                         Task { @MainActor in
                             await self.handleNewMessage(message, conversationID: conversationID)
                         }
@@ -74,14 +88,34 @@ class MessageListenerService: ObservableObject {
     
     /// Handle a new message (trigger notifications)
     private func handleNewMessage(_ message: Message, conversationID: String) async {
-        guard let currentUserID = currentUserID else { return }
+        guard let currentUserID = currentUserID,
+              let messageID = message.id else {
+            print("⚠️ No current user ID or message ID, skipping notification")
+            return
+        }
+        
+        // Deduplicate: Skip if we've already processed this message
+        guard !processedMessageIDs.contains(messageID) else {
+            print("⏭️ Already processed message: \(messageID)")
+            return
+        }
+        processedMessageIDs.insert(messageID)
         
         // Don't notify for our own messages
-        guard message.senderID != currentUserID else { return }
+        guard message.senderID != currentUserID else {
+            print("⏭️ Skipping notification for own message")
+            print("   Sender: \(message.senderID)")
+            print("   Current User: \(currentUserID)")
+            print("   Message ID: \(messageID)")
+            return
+        }
         
-        print("📬 New message received in conversation: \(conversationID)")
+        print("📬 New message - triggering notification!")
+        print("   Message ID: \(messageID)")
+        print("   Conversation: \(conversationID)")
         print("   From: \(message.senderID)")
-        print("   Text: \(message.text)")
+        print("   To User: \(currentUserID)")
+        print("   Text: \(message.text ?? "nil")")
         
         // Get sender name
         let senderName = await getSenderName(senderID: message.senderID)
@@ -89,38 +123,79 @@ class MessageListenerService: ObservableObject {
         // Get conversation details
         let conversationDetails = await getConversationDetails(conversationID: conversationID)
         
-        // Check if we're currently viewing this conversation
-        let isViewingConversation = NotificationCenter.default
-            .publisher(for: .currentConversationChanged)
-            .first()
-            .map { notification in
-                notification.userInfo?["conversationID"] as? String == conversationID
-            }
+        // Determine message text (handle image-only messages)
+        let messageText = message.text ?? (message.mediaURL != nil ? "📷 Sent a photo" : "")
         
-        // If app is in foreground and we're NOT viewing this conversation, show in-app banner
-        if !isViewingThisConversation(conversationID) {
-            InAppBannerManager.shared.showMessageBanner(
-                conversationID: conversationID,
-                senderName: senderName,
-                messageText: message.text
-            )
+        // Check if user is actively viewing this conversation
+        let isViewingConversation = isViewingThisConversation(conversationID)
+        
+        // Calculate total unread messages for badge
+        let totalUnreadCount = await getTotalUnreadCount(for: currentUserID)
+        
+        // If viewing this conversation, don't show ANY notifications
+        if isViewingConversation {
+            print("🙈 Suppressing all notifications - user is in this chat")
+            return
         }
         
-        // Always send local notification (iOS handles if user is in the app)
+        // If app is in foreground and we're NOT viewing this conversation, show in-app banner
+        InAppBannerManager.shared.showMessageBanner(
+            conversationID: conversationID,
+            senderName: senderName,
+            messageText: messageText
+        )
+        
+        // Send local notification (iOS handles if user is in the app)
         await LocalNotificationManager.shared.sendMessageNotification(
             conversationID: conversationID,
             senderName: senderName,
-            messageText: message.text,
+            messageText: messageText,
             isGroup: conversationDetails.isGroup,
-            groupName: conversationDetails.name
+            groupName: conversationDetails.name,
+            totalUnreadCount: totalUnreadCount
         )
+    }
+    
+    /// Calculate total unread messages across all conversations
+    private func getTotalUnreadCount(for userID: String) async -> Int {
+        do {
+            let snapshot = try await db.collection(Constants.Collections.conversations)
+                .whereField("participants", arrayContains: userID)
+                .getDocuments()
+            
+            var totalUnread = 0
+            for document in snapshot.documents {
+                if let conversation = try? document.data(as: Conversation.self),
+                   let unreadCount = conversation.unreadCount[userID] {
+                    totalUnread += unreadCount
+                }
+            }
+            
+            print("🔢 Total unread messages for \(userID): \(totalUnread)")
+            return totalUnread
+        } catch {
+            print("❌ Error calculating unread count: \(error)")
+            return 1 // Fallback to 1
+        }
+    }
+    
+    /// Set which conversation is currently being viewed
+    func setCurrentlyViewing(conversationID: String?) {
+        currentlyViewingConversationID = conversationID
+        if let id = conversationID {
+            print("👁️  Now viewing conversation: \(id)")
+        } else {
+            print("👁️  No longer viewing any conversation")
+        }
     }
     
     /// Check if user is currently viewing a conversation
     private func isViewingThisConversation(_ conversationID: String) -> Bool {
-        // This would be set by ChatView when it appears/disappears
-        // For now, return false to always show banners
-        return false
+        let isViewing = currentlyViewingConversationID == conversationID
+        if isViewing {
+            print("🙈 User is viewing this conversation - suppressing notification")
+        }
+        return isViewing
     }
     
     /// Get sender display name
@@ -161,6 +236,7 @@ class MessageListenerService: ObservableObject {
             print("🔇 Stopped listening to: \(conversationID)")
         }
         conversationListeners.removeAll()
+        processedMessageIDs.removeAll()
     }
     
     /// Stop listening (called on logout)

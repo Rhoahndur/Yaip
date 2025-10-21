@@ -8,6 +8,7 @@
 import Foundation
 import UserNotifications
 import FirebaseFirestore
+import Combine
 
 /// Manages local notifications (no APNs required!)
 @MainActor
@@ -41,7 +42,8 @@ class LocalNotificationManager: NSObject, ObservableObject {
         senderName: String,
         messageText: String,
         isGroup: Bool,
-        groupName: String?
+        groupName: String?,
+        totalUnreadCount: Int
     ) async {
         // Check permission
         let settings = await notificationCenter.notificationSettings()
@@ -61,7 +63,11 @@ class LocalNotificationManager: NSObject, ObservableObject {
         
         content.body = messageText.isEmpty ? "📷 Sent a photo" : messageText
         content.sound = .default
-        content.badge = 1
+        
+        // Set badge to actual unread count (cap at 99)
+        let badgeCount = min(totalUnreadCount, 99)
+        content.badge = NSNumber(value: badgeCount)
+        print("🔢 Setting badge count to: \(badgeCount)")
         
         // Add conversation ID to userInfo for handling tap
         content.userInfo = [
@@ -116,9 +122,12 @@ extension LocalNotificationManager: UNUserNotificationCenterDelegate {
         print("🔔 Received local notification in foreground:")
         print("   Title: \(notification.request.content.title)")
         print("   Body: \(notification.request.content.body)")
+        print("   ℹ️  Suppressing system notification (using in-app banner instead)")
         
-        // Show banner, sound, and badge even when app is in foreground
-        completionHandler([.banner, .sound, .badge])
+        // DON'T show system notification when app is in foreground
+        // (We're using custom in-app banner instead)
+        // The notification WILL show if user switches to another app
+        completionHandler([])
     }
     
     /// Handle notification tap (when user taps on notification)

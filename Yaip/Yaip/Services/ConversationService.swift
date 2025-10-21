@@ -95,6 +95,7 @@ class ConversationService {
 enum ConversationError: LocalizedError {
     case invalidID
     case notFound
+    case cannotChatWithSelf
     
     var errorDescription: String? {
         switch self {
@@ -102,6 +103,8 @@ enum ConversationError: LocalizedError {
             return "Conversation ID is invalid"
         case .notFound:
             return "Conversation not found"
+        case .cannotChatWithSelf:
+            return "You cannot create a chat with yourself"
         }
     }
 }

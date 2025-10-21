@@ -11,14 +11,24 @@ struct GroupMessageBubble: View {
     let message: Message
     let senderName: String
     let isFromCurrentUser: Bool
+    let conversation: Conversation
+    let currentUserID: String
+    
+    @State private var showingReadReceipts = false
     
     var body: some View {
         HStack {
             if isFromCurrentUser { Spacer(minLength: 60) }
             
             VStack(alignment: isFromCurrentUser ? .trailing : .leading, spacing: 4) {
-                // Sender name (for received messages in groups)
-                if !isFromCurrentUser {
+                // Sender name
+                if isFromCurrentUser {
+                    Text("You")
+                        .font(.caption)
+                        .fontWeight(.medium)
+                        .foregroundStyle(.blue)
+                        .padding(.trailing, 12)
+                } else {
                     Text(senderName)
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -51,6 +61,19 @@ struct GroupMessageBubble: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 2)
+        .onTapGesture {
+            // Only show read receipts for your own messages in group chats
+            if isFromCurrentUser && conversation.type == .group {
+                showingReadReceipts = true
+            }
+        }
+        .sheet(isPresented: $showingReadReceipts) {
+            MessageReadReceiptsView(
+                message: message,
+                conversation: conversation,
+                currentUserID: currentUserID
+            )
+        }
     }
     
     @ViewBuilder
@@ -65,15 +88,26 @@ struct GroupMessageBubble: View {
                 .font(.caption2)
                 .foregroundStyle(.secondary)
         case .delivered:
-            Image(systemName: "checkmark.checkmark")
-                .font(.caption2)
-                .foregroundStyle(.secondary)
+            HStack(spacing: -2) {
+                Image(systemName: "checkmark")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                Image(systemName: "checkmark")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
         case .read:
             HStack(spacing: 2) {
-                Image(systemName: "checkmark.checkmark")
-                    .font(.caption2)
-                    .foregroundStyle(.blue)
-                    .fontWeight(.semibold)
+                HStack(spacing: -2) {
+                    Image(systemName: "checkmark")
+                        .font(.caption2)
+                        .foregroundStyle(.blue)
+                        .fontWeight(.semibold)
+                    Image(systemName: "checkmark")
+                        .font(.caption2)
+                        .foregroundStyle(.blue)
+                        .fontWeight(.semibold)
+                }
                 
                 // Show read count in groups
                 if message.readBy.count > 1 {
@@ -105,7 +139,19 @@ struct GroupMessageBubble: View {
                 readBy: ["user1"]
             ),
             senderName: "Alice",
-            isFromCurrentUser: false
+            isFromCurrentUser: false,
+            conversation: Conversation(
+                id: "conv1",
+                type: .group,
+                participants: ["user1", "user2", "user3"],
+                name: "Test Group",
+                imageURL: nil,
+                lastMessage: nil,
+                createdAt: Date(),
+                updatedAt: Date(),
+                unreadCount: [:]
+            ),
+            currentUserID: "user1"
         )
     }
     .padding()

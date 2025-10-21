@@ -12,10 +12,10 @@ struct MessageBubble: View {
     let isFromCurrentUser: Bool
     
     var body: some View {
-        HStack {
-            if isFromCurrentUser { Spacer(minLength: 60) }
+        HStack(alignment: .bottom, spacing: 8) {
+            if isFromCurrentUser { Spacer(minLength: 50) }
             
-            VStack(alignment: isFromCurrentUser ? .trailing : .leading, spacing: 4) {
+            VStack(alignment: isFromCurrentUser ? .trailing : .leading, spacing: 2) {
                 // Image if present
                 if let mediaURL = message.mediaURL, message.mediaType == .image {
                     AsyncImage(url: URL(string: mediaURL)) { phase in
@@ -28,7 +28,7 @@ struct MessageBubble: View {
                                 .resizable()
                                 .scaledToFit()
                                 .frame(maxWidth: 250)
-                                .cornerRadius(12)
+                                .cornerRadius(18)
                         case .failure:
                             Image(systemName: "photo")
                                 .font(.largeTitle)
@@ -40,20 +40,29 @@ struct MessageBubble: View {
                     }
                 }
                 
-                // Message text
+                // Message bubble
                 if let text = message.text {
                     Text(text)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
-                        .background(isFromCurrentUser ? Color.sentMessageBackground : Color.receivedMessageBackground)
-                        .foregroundStyle(isFromCurrentUser ? Color.sentMessageText : Color.receivedMessageText)
-                        .cornerRadius(16)
+                        .font(.system(size: 16))
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 10)
+                        .background(
+                            isFromCurrentUser ?
+                            LinearGradient(colors: [Color(hex: "0084FF"), Color(hex: "0066CC")],
+                                         startPoint: .topLeading,
+                                         endPoint: .bottomTrailing) :
+                            LinearGradient(colors: [Color(.systemGray5), Color(.systemGray6)],
+                                         startPoint: .topLeading,
+                                         endPoint: .bottomTrailing)
+                        )
+                        .foregroundStyle(isFromCurrentUser ? .white : .primary)
+                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                 }
                 
                 // Timestamp and status
                 HStack(spacing: 4) {
                     Text(message.timestamp.timeString)
-                        .font(.caption2)
+                        .font(.system(size: 12))
                         .foregroundStyle(.secondary)
                     
                     if isFromCurrentUser {
@@ -61,18 +70,19 @@ struct MessageBubble: View {
                             statusIcon
                             if message.status == .read && message.readBy.count > 1 {
                                 Text("Read")
-                                    .font(.caption2)
+                                    .font(.system(size: 11))
                                     .foregroundStyle(.blue)
                             }
                         }
                     }
                 }
+                .padding(.horizontal, 4)
             }
             
-            if !isFromCurrentUser { Spacer(minLength: 60) }
+            if !isFromCurrentUser { Spacer(minLength: 50) }
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 2)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 3)
     }
     
     @ViewBuilder
@@ -91,14 +101,21 @@ struct MessageBubble: View {
                     .foregroundStyle(.secondary)
             }
         case .delivered:
-            HStack(spacing: 2) {
-                Image(systemName: "checkmark.checkmark")
+            HStack(spacing: -2) {
+                Image(systemName: "checkmark")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                Image(systemName: "checkmark")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
         case .read:
-            HStack(spacing: 2) {
-                Image(systemName: "checkmark.checkmark")
+            HStack(spacing: -2) {
+                Image(systemName: "checkmark")
+                    .font(.caption2)
+                    .foregroundStyle(.blue)
+                    .fontWeight(.semibold)
+                Image(systemName: "checkmark")
                     .font(.caption2)
                     .foregroundStyle(.blue)
                     .fontWeight(.semibold)

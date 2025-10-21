@@ -12,6 +12,7 @@ import SwiftData
 @main
 struct YaipApp: App {
     @Environment(\.scenePhase) private var scenePhase
+    @StateObject private var authManager = AuthManager.shared
     
     init() {
         // Initialize Firebase
@@ -19,6 +20,9 @@ struct YaipApp: App {
         
         // Initialize LocalStorageManager (SwiftData)
         _ = LocalStorageManager.shared
+        
+        // Start network monitoring
+        NetworkMonitor.shared.startMonitoring()
     }
     
     var body: some Scene {
@@ -36,14 +40,45 @@ struct YaipApp: App {
         switch newPhase {
         case .active:
             print("📱 App became active")
+            // Clear badge count when user opens app
+            LocalNotificationManager.shared.clearBadge()
+            
+            // Set user to ONLINE when app becomes active
+            if let userID = authManager.currentUserID {
+                Task {
+                    do {
+                        try await PresenceService.shared.setOnline(userID: userID)
+                        print("🟢 User set to ONLINE")
+                    } catch {
+                        print("❌ Failed to set user online: \(error)")
+                    }
+                }
+            }
+            
             // Sync pending messages when coming back online
             Task {
                 await syncPendingMessages()
             }
+            
         case .inactive:
             print("📱 App became inactive")
+            // Don't change status on inactive - it's a brief transition
+            
         case .background:
             print("📱 App went to background")
+            
+            // Set user to AWAY when app goes to background
+            if let userID = authManager.currentUserID {
+                Task {
+                    do {
+                        try await PresenceService.shared.updateStatus(.away, for: userID)
+                        print("🟠 User set to AWAY")
+                    } catch {
+                        print("❌ Failed to set user away: \(error)")
+                    }
+                }
+            }
+            
         @unknown default:
             break
         }

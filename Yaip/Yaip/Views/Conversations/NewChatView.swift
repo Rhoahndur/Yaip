@@ -36,10 +36,39 @@ struct NewChatView: View {
                 
                 // Group name input (only for group chats)
                 if isGroupChatMode {
-                    TextField("Group Name", text: $groupName)
-                        .textFieldStyle(.roundedBorder)
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack {
+                            TextField("Group Name", text: $groupName)
+                                .textFieldStyle(.roundedBorder)
+                            
+                            // Visual indicator
+                            if selectedUsers.count >= 2 {
+                                if groupName.trimmingCharacters(in: .whitespaces).isEmpty {
+                                    Image(systemName: "exclamationmark.circle.fill")
+                                        .foregroundStyle(.orange)
+                                } else {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .foregroundStyle(.green)
+                                }
+                            }
+                        }
                         .padding(.horizontal)
-                        .padding(.bottom, 8)
+                        
+                        // Show validation hint - always visible in group mode
+                        if selectedUsers.count >= 2 && groupName.trimmingCharacters(in: .whitespaces).isEmpty {
+                            HStack(spacing: 4) {
+                                Image(systemName: "arrow.up")
+                                    .font(.caption)
+                                    .foregroundStyle(.orange)
+                                Text("Type a group name above to enable Create button")
+                                    .font(.caption)
+                                    .foregroundStyle(.orange)
+                                    .fontWeight(.medium)
+                            }
+                            .padding(.horizontal)
+                        }
+                    }
+                    .padding(.bottom, 8)
                 }
                 
                 // Search bar
@@ -148,10 +177,18 @@ struct NewChatView: View {
                 }
                 
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(isCreating ? "Creating..." : "Create") {
-                        createConversation()
+                    if canCreate && !isCreating {
+                        // Enabled button - tappable
+                        Button("Create") {
+                            createConversation()
+                        }
+                        .foregroundStyle(.blue)
+                        .fontWeight(.semibold)
+                    } else {
+                        // Disabled button - no tap gesture
+                        Text(isCreating ? "Creating..." : "Create")
+                            .foregroundStyle(.gray)
                     }
-                    .disabled(!canCreate || isCreating)
                 }
             }
             .task {
@@ -201,25 +238,46 @@ struct NewChatView: View {
             do {
                 if isGroupChatMode {
                     // Create group conversation
+                    print("🔄 Creating group chat...")
+                    print("   Name: \(groupName)")
+                    print("   Selected users: \(selectedUsers.count)")
+                    
                     guard let currentUserID = conversationViewModel.authManager.currentUserID else {
                         throw ConversationError.invalidID
                     }
                     
                     let participantIDs = selectedUsers.compactMap { $0.id }
-                    _ = try await conversationViewModel.createGroupConversation(
+                    print("   Participant IDs: \(participantIDs)")
+                    print("   Current user: \(currentUserID)")
+                    
+                    let conversation = try await conversationViewModel.createGroupConversation(
                         name: groupName.trimmingCharacters(in: .whitespaces),
                         participants: participantIDs
                     )
+                    
+                    print("✅ Group chat created: \(conversation.id ?? "no-id")")
                 } else {
                     // Create 1-on-1 conversation
-                    guard let selectedUser = selectedUsers.first else { return }
-                    _ = try await conversationViewModel.createOneOnOneConversation(with: selectedUser)
+                    print("🔄 Creating 1-on-1 chat...")
+                    guard let selectedUser = selectedUsers.first else { 
+                        print("❌ No selected user")
+                        return 
+                    }
+                    print("   With: \(selectedUser.displayName)")
+                    
+                    let conversation = try await conversationViewModel.createOneOnOneConversation(with: selectedUser)
+                    print("✅ 1-on-1 chat created: \(conversation.id ?? "no-id")")
                 }
                 
-                dismiss()
+                await MainActor.run {
+                    dismiss()
+                }
             } catch {
-                errorMessage = error.localizedDescription
-                isCreating = false
+                print("❌ Error creating conversation: \(error)")
+                await MainActor.run {
+                    errorMessage = error.localizedDescription
+                    isCreating = false
+                }
             }
         }
     }

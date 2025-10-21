@@ -6,16 +6,18 @@
 //
 
 import SwiftUI
+import Combine
 
 struct ConversationListView: View {
     @StateObject private var viewModel = ConversationListViewModel()
     @StateObject private var authManager = AuthManager.shared
     @StateObject private var messageListener = MessageListenerService.shared
+    @StateObject private var networkMonitor = NetworkMonitor.shared
     @State private var showNewChat = false
-    @State private var hasRequestedNotifications = false
+    @State private var navigationPath = NavigationPath()
     
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $navigationPath) {
             Group {
                 if viewModel.isLoading && viewModel.conversations.isEmpty {
                     VStack {
@@ -57,22 +59,49 @@ struct ConversationListView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     // Conversation list
-                    List {
-                        ForEach(viewModel.conversations) { conversation in
-                            NavigationLink(value: conversation) {
-                                ConversationRow(
-                                    conversation: conversation,
-                                    currentUserID: authManager.currentUserID
-                                )
+                    VStack(spacing: 0) {
+                        // Network status indicator (if offline)
+                        if !networkMonitor.isConnected {
+                            HStack {
+                                Image(systemName: "wifi.slash")
+                                    .foregroundStyle(.white)
+                                Text("Offline - Messages will send when reconnected")
+                                    .font(.caption)
+                                    .foregroundStyle(.white)
+                            }
+                            .padding(.vertical, 6)
+                            .frame(maxWidth: .infinity)
+                            .background(Color.orange)
+                        }
+                        
+                        // Current user indicator - compact at top
+                        if let user = authManager.user {
+                            CurrentUserBadge(displayName: user.displayName, email: user.email)
+                                .padding(.horizontal, 16)
+                                .padding(.top, 8)
+                                .padding(.bottom, 4)
+                        }
+                        
+                        List {
+                            ForEach(viewModel.conversations) { conversation in
+                                NavigationLink(value: conversation) {
+                                    ConversationRow(
+                                        conversation: conversation,
+                                        currentUserID: authManager.currentUserID
+                                    )
+                                }
+                                .listRowInsets(EdgeInsets())
+                                .listRowSeparator(.hidden)
+                            }
+                            .onDelete { indexSet in
+                                deleteConversations(at: indexSet)
                             }
                         }
-                        .onDelete { indexSet in
-                            deleteConversations(at: indexSet)
+                        .listStyle(.plain)
+                        .scrollContentBackground(.hidden)
+                        .refreshable {
+                            await viewModel.fetchConversations()
                         }
-                    }
-                    .listStyle(.plain)
-                    .refreshable {
-                        await viewModel.fetchConversations()
                     }
                 }
             }
@@ -81,6 +110,19 @@ struct ConversationListView: View {
                 ChatView(conversation: conversation)
             }
             .toolbar {
+                // Current user indicator (top center)
+                ToolbarItem(placement: .principal) {
+                    VStack(spacing: 2) {
+                        Text("Chats")
+                            .font(.headline)
+                        if let user = authManager.user {
+                            Text(user.displayName)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         showNewChat = true
@@ -91,7 +133,9 @@ struct ConversationListView: View {
                 
                 ToolbarItem(placement: .topBarLeading) {
                     Button {
-                        try? authManager.signOut()
+                        Task {
+                            try? await authManager.signOut()
+                        }
                     } label: {
                         Image(systemName: "rectangle.portrait.and.arrow.right")
                     }
@@ -102,18 +146,6 @@ struct ConversationListView: View {
             }
             .onAppear {
                 viewModel.startListening()
-                
-                // Request local notification permission on first appearance
-                if !hasRequestedNotifications {
-                    hasRequestedNotifications = true
-                    Task {
-                        do {
-                            try await LocalNotificationManager.shared.requestAuthorization()
-                        } catch {
-                            print("❌ Failed to request notification authorization: \(error)")
-                        }
-                    }
-                }
             }
             .onDisappear {
                 viewModel.stopListening()
@@ -124,6 +156,27 @@ struct ConversationListView: View {
                     messageListener.startListening(userID: userID, conversations: newValue)
                 }
             }
+            .onReceive(NotificationCenter.default.publisher(for: .openConversation)) { notification in
+                handleDeepLink(notification)
+            }
+        }
+    }
+    
+    private func handleDeepLink(_ notification: Notification) {
+        guard let conversationID = notification.userInfo?["conversationID"] as? String else {
+            print("⚠️ No conversationID in notification")
+            return
+        }
+        
+        print("🔗 Deep link: Opening conversation \(conversationID)")
+        
+        // Find the conversation in our list
+        if let conversation = viewModel.conversations.first(where: { $0.id == conversationID }) {
+            // Navigate to the conversation
+            navigationPath.append(conversation)
+            print("✅ Navigated to conversation: \(conversation.name ?? "Unknown")")
+        } else {
+            print("⚠️ Conversation \(conversationID) not found in list")
         }
     }
     

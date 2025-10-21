@@ -15,7 +15,7 @@ struct User: Codable, Identifiable, Equatable, Hashable {
     var email: String
     var profileImageURL: String?
     var status: UserStatus
-    var lastSeen: Date
+    var lastSeen: Date?  // Optional - might be null for newly created users
     var fcmToken: String?
     var createdAt: Date
     

@@ -42,12 +42,24 @@ class ConversationListViewModel: ObservableObject {
         
         listener = conversationService.listenToConversations(for: userID) { [weak self] conversations in
             Task { @MainActor in
-                self?.conversations = conversations
-                self?.isLoading = false
+                guard let self = self else { return }
+                
+                // Filter out conversations where user is talking to themselves
+                let filteredConversations = conversations.filter { conversation in
+                    if conversation.type == .group {
+                        return true // Keep all group chats
+                    }
+                    // For 1-on-1, make sure it's not with yourself
+                    let uniqueParticipants = Set(conversation.participants)
+                    return uniqueParticipants.count > 1
+                }
+                
+                self.conversations = filteredConversations
+                self.isLoading = false
                 
                 // Save to local storage
-                for conversation in conversations {
-                    try? self?.localStorage.saveConversation(conversation)
+                for conversation in filteredConversations {
+                    try? self.localStorage.saveConversation(conversation)
                 }
             }
         }
@@ -70,7 +82,18 @@ class ConversationListViewModel: ObservableObject {
         
         do {
             let conversations = try await conversationService.fetchConversations(for: userID)
-            self.conversations = conversations
+            
+            // Filter out conversations where user is talking to themselves
+            let filteredConversations = conversations.filter { conversation in
+                if conversation.type == .group {
+                    return true // Keep all group chats
+                }
+                // For 1-on-1, make sure it's not with yourself
+                let uniqueParticipants = Set(conversation.participants)
+                return uniqueParticipants.count > 1
+            }
+            
+            self.conversations = filteredConversations
             isLoading = false
         } catch {
             errorMessage = error.localizedDescription
@@ -83,6 +106,11 @@ class ConversationListViewModel: ObservableObject {
         guard let currentUserID = authManager.currentUserID,
               let otherUserID = otherUser.id else {
             throw ConversationError.invalidID
+        }
+        
+        // Prevent creating conversation with yourself
+        guard currentUserID != otherUserID else {
+            throw ConversationError.cannotChatWithSelf
         }
         
         let participants = [currentUserID, otherUserID]
@@ -98,8 +126,8 @@ class ConversationListViewModel: ObservableObject {
             id: nil, // Let Firestore set it
             type: .oneOnOne,
             participants: participants,
-            name: otherUser.displayName,
-            imageURL: otherUser.profileImageURL,
+            name: nil, // Don't store name for 1-on-1 (compute dynamically)
+            imageURL: nil,
             lastMessage: nil,
             createdAt: Date(),
             updatedAt: Date(),
