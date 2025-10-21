@@ -95,7 +95,7 @@ iOSInjectionProject/
 # Firebase
 # Keep GoogleService-Info.plist in version control for team projects
 # Uncomment the next line if you want to keep it private
-# GoogleService-Info.plist
+GoogleService-Info.plist
 
 # Environment variables
 .env
