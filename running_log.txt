@@ -170,4 +170,102 @@ how can we get Push Notifications working in foreground
 ### Prompt 46:
 ah i wish you hadnt done that - I cannot enable Push Notifications in Xcode, could we do local notifications + in-app banners with a websocket to simulate a push. UX could function the same?
 
+### Prompt 47:
+got some some errors on building - two in LocalNotificationsManager and 3 in InAppBannerView (missing Combine imports and optional String unwrapping)
+
+### Prompt 48:
+can you add this file to gitignore and remove it from repo (its been committed) @https://github.com/Rhoahndur/Yaip/blob/869c8157ee9bc982f807ab85168d27f2c6c0b457/Yaip/Yaip/GoogleService-Info.plist
+
+### Prompt 49:
+Lets go with option A (BFG Repo-Cleaner to remove GoogleService-Info.plist from Git history)
+
+### Prompt 50:
+so when i sign out of app the other user still sees me as online
+
+### Prompt 51:
+ok uhh so I signed in as a user and it seems like I can see a chat for myself?
+
+### Prompt 52:
+how does the sign in "remembering" work?
+
+### Prompt 53:
+can we have when user signs in to indicate who's the signed in user vs who you're talking to? Also the notifications is weird i think its being broadcast to everyone instead of just to the user the message is addressed to.
+
+### Prompt 54:
+also can you make the interface look closer to this design? (Signal messenger design)
+
+### Prompt 55:
+why does it say Bob for each of the users chats even though its same chat (but from different users perspectives)? also can the which user is signed into the app be nice and tight at the top instead of like it is now?
+
+### Prompt 56:
+No symbol named 'checkmark.checkmark' found in system symbol set
+
+### Prompt 57:
+the push notifications is still glitchy - sometimes itll push a bunch of notifications through sometimes just the last one sometimes to the intended reciepient sometimes to both. Also I can select users to add to a Group Chat but I can't actually create a group chat
+
+### Prompt 58:
+still cannot create group chat actually the Create button looks greyed out??, and also getting this error rror loading user: Error Domain=UserService Code=404 "User not found" UserInfo={NSLocalizedDescription=User not found}
+
+### Prompt 59:
+getting these messages in xcode console when i try to click Create when Im trying to setup a group chat (excessive logging and user not found errors)
+
+### Prompt 60:
+oh can you make that clearer somehow may be a hint if user doesnt get it right away?  Create then shouldn't have the 'click' animation if something else is expected
+
+### Prompt 61:
+hmm there seems to be two types of push notifications - one for when youre in-app and im guessing one where youre not actively in the app - Im seeing both notifications happen while Im in the app
+
+### Prompt 62:
+when i have the app minimized I dont see any push notifications
+
+### Prompt 63:
+also for every message that hasnt been read can the red counter notification increment up? I mean when the app is minimized, maybe up to 9 or so or just have like * instead otherwise 1 can be misleading since there could be many unread messages.  Also how are we handling if the phone is offline and then pushing messages that were meant to be sent out from the phone & syncing up to whatever messages have been sent to the phone but not recieved
+
+### Prompt 64:
+not seeing any notifications when the app is minimized even though permission was allowed
+
+### Prompt 65:
+also the one time there shouldnt be notifications is if user is actively in the chat where a new message is coming from - thats redundant
+
+### Prompt 66:
+can you add for the group chat you can click on messages and see who read them or not?  Also for just general mechanic of message read - if both users are in same message thread - and someone messages, it doesn't (lets say within 1-2 seconds update to "Read", you actually have to leave the chat and come back into it to register) can we adjust this
+
+### Prompt 67:
+build failing: /Users/aleksandrgaun/Downloads/Yaip/Yaip/Yaip/Views/Chat/GroupMessageBubble.swift:129:27 Missing arguments for parameters 'conversation', 'currentUserID' in call , also /Users/aleksandrgaun/Downloads/Yaip/Yaip/Yaip/Views/Chat/MessageReadReceiptsView.swift:131:13 Argument 'mediaURL' must precede argument 'timestamp'
+
+### Prompt 68:
+build failed: /Users/aleksandrgaun/Downloads/Yaip/Yaip/Yaip/Views/Chat/GroupMessageBubble.swift:138:17 Argument 'mediaURL' must precede argument 'timestamp' and this error also /Users/aleksandrgaun/Downloads/Yaip/Yaip/Yaip/Views/Chat/MessageReadReceiptsView.swift:131:13 Argument 'mediaURL' must precede argument 'timestamp'
+
+### Prompt 69:
+ChatViewModel error while building: /Users/aleksandrgaun/Downloads/Yaip/Yaip/Yaip/ViewModels/ChatViewModel.swift:105:59 Trailing closure passed to parameter of type 'Predicate<Message>' that does not accept a closure
+
+### Prompt 70:
+in chat view model another error for Build: /Users/aleksandrgaun/Downloads/Yaip/Yaip/Yaip/ViewModels/ChatViewModel.swift:100:41 Value of type 'ChatViewModel' has no member 'currentUserID'
+
+### Prompt 71:
+how frequently is "being online" being checked?
+
+### Prompt 72:
+Yeah lets go with option A for now
+
+### Prompt 73:
+if user signs out that should show up as "offline" for others, and if they just minimize the app it should be set to "away"
+
+### Prompt 74:
+we cool with these messages in xcode console im seeing when re-deploying re-built app to simulator? Decoding error: valueNotFound(Foundation.Date, Swift.DecodingError.Context(codingPath: [CodingKeys(stringValue: "lastSeen", intValue: nil)], debugDescription: "Expected Date value but found null instead.", underlyingError: nil))
+✅ Used fallback user construction
+12.4.0 - [FirebaseFirestore][I-FST000002] Attempting to initialize or set a @DocumentID property with a non-nil value: "CCXnppvrkiXSbnslca0LGJyKBdi2". The document ID is managed by Firestore and any initialized or set value will be ignored. The ID is automatically set when reading from Firestore.
+
+### Prompt 75:
+can you refactor all these .md files besides PRD, Tasks and architecture into a docs directory bucketed into FEATURES, SETUP and TECHNICAL .md files?
+
+### Prompt 76:
+can the push notifications when clicked to take you to the chat the notification is from?
+
+### Prompt 77:
+also while i have the app minimized, ie in main phone view im still not seeing push notifications that are relevant to me even though in permissions i allowed notifications
+
+### Prompt 78:
+ah gotcha OK yeah lets stick with current setup for now since for MVP this'll do
+
 ---
