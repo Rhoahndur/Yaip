@@ -147,4 +147,27 @@ also can you add user online/away/offline indicator, message read reciepts
 ### Prompt 39:
 can you add all of my prompts so far here into a running_log.txt file?
 
+### Prompt 40:
+wait do i have two branches?
+
+### Prompt 41:
+seeing a few errors when app initializes on iphone in simulator: Decoding error: decodingIsNotSupported("Could not find DocumentReference for user info key: CodingUserInfoKey(rawValue: \"DocumentRefUserInfoKey\").\nDocumentID values can only be decoded with Firestore.Decoder") ❌ Data causing error: ["displayName": Alice, "lastSeen": <FIRTimestamp: seconds=1761005986 nanoseconds=181233000>, "createdAt": <FIRTimestamp: seconds=1761005986 nanoseconds=181233000>, "status": online, "email": alice@test.com] 12.4.0 - [FirebaseFirestore][I-FST000002] Attempting to initialize or set a @DocumentID property with a non-nil value: "CCXnppvrkiXSbnslca0LGJyKBdi2". The document ID is managed by Firestore and any initialized or set value will be ignored. The ID is automatically set when reading from Firestore. ✅ Used fallback user construction Error loading user status: decodingIsNotSupported("Could not find DocumentReference for user info key: CodingUserInfoKey(rawValue: \"DocumentRefUserInfoKey\").\nDocumentID values can only be decoded with Firestore.Decoder")
+
+### Prompt 42:
+on starting up on iphone simulator seeing these messages: nw_endpoint_flow_failed_with_error [C1 2607:f8b0:4006:801::200a.443 failed parent-flow (unsatisfied (No network route))] already failing, returning
+nw_connection_get_connected_socket_block_invoke [C1] Client called nw_connection_get_connected_socket on unconnected nw_connection
+TCP Conn 0x6000033094a0 Failed : error 0:50 [50]
+
+### Prompt 43:
+the "Read" messages doesn't seem to update fully though or it seems if I sign in and out it'll update
+
+### Prompt 44:
+how can we enable group chat as a feature?
+
+### Prompt 45:
+how can we get Push Notifications working in foreground
+
+### Prompt 46:
+ah i wish you hadnt done that - I cannot enable Push Notifications in Xcode, could we do local notifications + in-app banners with a websocket to simulate a push. UX could function the same?
+
 ---
