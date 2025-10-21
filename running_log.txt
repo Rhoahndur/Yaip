@@ -1,0 +1,150 @@
+# Running Log - Yaip Project Setup Session
+Date: October 21, 2025
+
+Initial Web Claude Prompts:
+
+so have this new project in mind can you make a PRD document for a possible implementation, for the tech stack I'd like to implement in Swift and also use Firebase for the backend, please let me know if there are any questions:
+
+
+can you make sure to focus the PRD on the MVP deliverables first.  In terms of your questions, 1) For personal choice yes lets go with Remote Team Professional.  2) Lets go with Option B 3) Lets try contextual AI features embedded in conversations. 4)Yes planning to follow the full week sprint, but dont worry about the timeline lets just make sure we cover everything actionable especially the MVP since thats first to accomplish. 5) I'll be building this solo
+
+take this document you generated create for me a task list. This task list should be a checklist of all the tasks that need to be done, broken down by PRs. Every time a PR is completed, I'm going to be sending that up using Git to my GitHub repository and tracking the progression of this codebase. So in this task list, there should be high-level PR-related tasks, and then each of the subtasks for each of the PRs to be completed. Identify the file structure that is going to be associated with this project, and then let me know within each of the tasks what files I'm updating and what files I may be editing.
+
+So now that we've done the task list and the PRD, use this context to create a mermaid diagram. A mermaid diagram that describes the connections between my entire codebase, the client-server interactions, and any other technologies that I'm going to be using.
+
+
+## Conversation Log - User Prompts
+
+---
+
+### Prompt 1:
+can you walk me through adding Firebase SDK via Swift Package Manager
+
+### Prompt 2:
+how to enable Enable iOS Capabilities in firebase
+
+### Prompt 3:
+is there any way to get by without a Team assignment? Then it still says Signing for "Yaip" requires a development team.
+Select a development team in the Signing & Capabilities editor.
+
+### Prompt 4:
+seeing this: Cannot create a iOS App Development provisioning profile for "Tavern.Yaip".
+Personal development teams, including "ALEKSANDR GAUN", do not support the Push Notifications capability.
+
+### Prompt 5:
+yes lets remove Push Notifications for now
+
+### Prompt 6:
+seeing these errors: 
+[Screenshot showing Xcode signing errors:
+- "Communication with Apple failed"
+- "Your team has no devices from which to generate a provisioning profile"
+- "No profiles for 'Tavern.Yaip' were found"]
+
+### Prompt 7:
+nope still there
+
+### Prompt 8:
+how do I "run" the XCode in simulator to see if the app works?
+
+### Prompt 9:
+how to have two XCode project simulators running at once? is that possible?
+
+### Prompt 10:
+how do i manually drop my app into the second simulator?
+
+### Prompt 11:
+it doesnt seem like i can launch a second simulator how do i do it ? it keeps asking if I want to stop the first one and start a new one
+
+### Prompt 12:
+i want to create a new repo, called Yaip, in my github account for this projet and switch over to it and commit to it how do i do that
+
+### Prompt 13:
+what repo would this go to?
+
+### Prompt 14:
+@https://github.com/Rhoahndur/Yaip.git
+
+### Prompt 15:
+can you add all of my prompts so far here into a running_log.txt file?
+
+---
+
+## Current Cursor Session - User Prompts
+Date: October 21, 2025
+
+---
+
+### Prompt 16:
+can you initialize memory bank for this new project/workspace
+
+### Prompt 17:
+Great, so now in reference to the PRD and architecture .md files lets go through each of the tasks in Tasks.md and build the MVP version of the mobile messanging app. and please let me know at each task if you need any clarifications or there are design options to consider as well as when I need to setup something up
+
+### Prompt 18:
+im using Bundle Identifier Tavern.Yaip   and yes I've setup a firebase account already do you need any information about the firebase account?
+
+### Prompt 19:
+app name is now Yaip, and bundle ID is yaip.tavern.  It's not MessageAI anymore - can you please update wherever necessary? Oh shoot I forgot leave Create Git Repository unchecked for the XCode proejct creation. And I set minimum deployment to iOS 17.6. Project test built successfully, I did have to remove Push Notifications for now though / doesnt seem like I can add it while I'm simulating devices (which is what I want to stick to for now)
+
+### Prompt 20:
+seeing a warning in fetchUserProfile line 57: Main actor-isolated conformance of 'User' to 'Decodable' cannot be used in nonisolated context; this is an error in the Swift 6 language mode
+
+### Prompt 21:
+seeing this error: Multiple commands produce '/Users/aleksandrgaun/Library/Developer/Xcode/DerivedData/Yaip-djvofvijuvoaphgqvbfevwmxbdpo/Build/Products/Debug-iphonesimulator/Yaip.app/.gitkeep' and this warning afer building: duplicate output file '/Users/aleksandrgaun/Library/Developer/Xcode/DerivedData/Yaip-djvofvijuvoaphgqvbfevwmxbdpo/Build/Products/Debug-iphonesimulator/Yaip.app/.gitkeep' on task: CpResource /Users/aleksandrgaun/Library/Developer/Xcode/DerivedData/Yaip-djvofvijuvoaphgqvbfevwmxbdpo/Build/Products/Debug-iphonesimulator/Yaip.app/.gitkeep /Users/aleksandrgaun/Downloads/Yaip/Yaip/Yaip/ViewModels/.gitkeep
+
+### Prompt 22:
+HELL YA IT WORKED LETS ROCK AND ROLL
+
+### Prompt 23:
+seeing this error: /Users/aleksandrgaun/Downloads/Yaip/Yaip/Yaip/ViewModels/ConversationListViewModel.swift:135:9 Call to main actor-isolated instance method 'stopListening()' in a synchronous nonisolated context
+
+### Prompt 24:
+hmm still seeing this error when building (its failing): /Users/aleksandrgaun/Downloads/Yaip/Yaip/Yaip/ViewModels/ConversationListViewModel.swift:135:9 Call to main actor-isolated instance method 'stopListening()' in a synchronous nonisolated context
+
+### Prompt 25:
+seeing this error
+
+### Prompt 26:
+now two errors in ConversationListView: /Users/aleksandrgaun/Downloads/Yaip/Yaip/Yaip/Views/Conversations/ConversationListView.swift:60:29 Initializer 'init(value:label:)' requires that 'Conversation' conform to 'Hashable' and this /Users/aleksandrgaun/Downloads/Yaip/Yaip/Yaip/Views/Conversations/ConversationListView.swift:78:14 Instance method 'navigationDestination(for:destination:)' requires that 'Conversation' conform to 'Hashable'
+
+### Prompt 27:
+so ive been able to sign in and users actually pop up for a brief second and then disappear so I can't try to start a chat
+
+### Prompt 28:
+im unable to login says in app "Login failed. Please try again" in XCode console seeing nw_socket_set_connection_idle [C7.1.1.1:3] setsockopt SO_CONNECTION_IDLE failed [42: Protocol not available] nw_socket_set_connection_idle [C7.1.1.1:3] setsockopt SO_CONNECTION_IDLE failed [42: Protocol not available] nw_socket_set_connection_idle [C8.1.1.1:3] setsockopt SO_CONNECTION_IDLE failed [42: Protocol not available] nw_socket_set_connection_idle [C8.1.1.1:3] setsockopt SO_CONNECTION_IDLE failed [42: Protocol not available] ❌ Error fetching user profile: The operation couldn't be completed. (FirebaseFirestore.FirestoreDecodingError error 0.).  but I also cant seem to sign up (says email address is already in use by another account - can I just delete entries in Firebase for accounts? I dont remember the password anyways)
+
+### Prompt 29:
+getting the (image attached) message when trying to sign in in the app (I deleted the entries in firebase to try to 'restart' because forgot my password and the reset feature doesn't work) and heres whats XCode console saying: [console output with haptic pattern errors and input operation errors]
+
+### Prompt 30:
+immedieatly after command+R i see this in the console: 12.4.0 - [GoogleUtilities/AppDelegateSwizzler][I-SWZ001014] App Delegate does not conform to UIApplicationDelegate protocol. nw_endpoint_flow_failed_with_error [C1 2607:f8b0:4006:806::200a.443 failed parent-flow (unsatisfied (No network route))] already failing, returning nw_connection_get_connected_socket_block_invoke [C1] Client called nw_connection_get_connected_socket on unconnected nw_connection TCP Conn 0x60000330cd20 Failed : error 0:50 [50] Error: User document not found
+
+### Prompt 31:
+I am able to select a user and I guess look at our chat (which is just blank) and theres no way I can type stuff or anything. But I digress, are you going to do the next PR or where are we at?
+
+### Prompt 32:
+im unable to login says in app "Login failed. Please try again" in XCode console seeing nw_socket_set_connection_idle [C7.1.1.1:3] setsockopt SO_CONNECTION_IDLE failed [42: Protocol not available] [repeated errors] ❌ Error fetching user profile: The operation couldn't be completed. (FirebaseFirestore.FirestoreDecodingError error 0.).  but I also cant seem to sign up (says email address is already in use by another account - can I just delete entries in Firebase for accounts? I dont remember the password anyways)
+
+### Prompt 33:
+made test account - unable login ❌ Error fetching user profile: The operation couldn't be completed. (FirebaseFirestore.FirestoreDecodingError error 0.)
+
+### Prompt 34:
+actually how about we finish building the whole MVP and then we can trouble shoot? Please proceeed with the next PR
+
+### Prompt 35:
+can you make sure you didn't miss any of the MVP PRs? It looked to me like you might have
+
+### Prompt 36:
+right now every user it just says User
+
+### Prompt 37:
+there's no typing indicator also ( you know like the 3 dots or what not)
+
+### Prompt 38:
+also can you add user online/away/offline indicator, message read reciepts
+
+### Prompt 39:
+can you add all of my prompts so far here into a running_log.txt file?
+
+---
