@@ -20,6 +20,7 @@ struct ChatView: View {
     @State private var otherUserLastSeen: Date?
     @State private var statusListener: ListenerRegistration?
     @State private var hasScrolledToTarget = false
+    @State private var displayName: String = ""
     
     init(conversation: Conversation, scrollToMessageID: String? = nil) {
         self.conversation = conversation
@@ -161,12 +162,12 @@ struct ChatView: View {
                 }
             }
         }
-        .navigationTitle(conversation.name ?? "Chat")
+        .navigationTitle(displayName)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .principal) {
                 VStack(spacing: 2) {
-                    Text(conversation.name ?? "Chat")
+                    Text(displayName)
                         .font(.headline)
                     
                     // Show online status for 1-on-1 chats
@@ -193,6 +194,9 @@ struct ChatView: View {
             ChatDetailView(conversation: conversation)
         }
         .onAppear {
+            // Load conversation name first
+            loadConversationName()
+            
             viewModel.startListening()
             viewModel.markAsRead()
             
@@ -220,6 +224,35 @@ struct ChatView: View {
         .onTapGesture {
             // Dismiss keyboard when tapping outside
             isTextFieldFocused = false
+        }
+    }
+    
+    private func loadConversationName() {
+        if conversation.type == .group {
+            // For group chats, use the group name
+            displayName = conversation.name ?? "Group Chat"
+        } else {
+            // For 1-on-1, fetch the other user's name
+            displayName = "Loading..."
+            Task {
+                guard let currentUserID = authManager.currentUserID,
+                      let otherUserID = conversation.participants.first(where: { $0 != currentUserID }) else {
+                    displayName = "Chat"
+                    return
+                }
+                
+                do {
+                    let otherUser = try await UserService.shared.fetchUser(id: otherUserID)
+                    await MainActor.run {
+                        displayName = otherUser.displayName
+                    }
+                } catch {
+                    print("Error loading other user's name: \(error)")
+                    await MainActor.run {
+                        displayName = "Chat"
+                    }
+                }
+            }
         }
     }
     
