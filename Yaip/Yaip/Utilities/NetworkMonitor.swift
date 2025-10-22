@@ -27,17 +27,29 @@ class NetworkMonitor: ObservableObject {
     }
     
     private init() {
+        // Start with optimistic connection state
+        isConnected = true
         startMonitoring()
     }
     
     func startMonitoring() {
         monitor.pathUpdateHandler = { [weak self] path in
             DispatchQueue.main.async {
-                self?.isConnected = path.status == .satisfied
+                let newConnectionState = path.status == .satisfied
+                
+                // Only update if status actually changed (reduce false alarms)
+                if self?.isConnected != newConnectionState {
+                    self?.isConnected = newConnectionState
+                    print("📡 Network status changed: \(newConnectionState ? "Connected ✅" : "Disconnected ❌")")
+                    print("   Path status: \(path.status)")
+                    print("   Available interfaces: \(path.availableInterfaces)")
+                }
+                
                 self?.connectionType = self?.getConnectionType(from: path) ?? .unknown
             }
         }
         monitor.start(queue: queue)
+        print("🔍 Network monitoring started")
     }
     
     func stopMonitoring() {

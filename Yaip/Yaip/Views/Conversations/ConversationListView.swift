@@ -61,8 +61,9 @@ struct ConversationListView: View {
                 } else {
                     // Conversation list
                     VStack(spacing: 0) {
-                        // Network status indicator (if offline)
-                        if !networkMonitor.isConnected {
+                        // Network status indicator (only show if offline AND no data loaded)
+                        // This prevents false positives in simulators
+                        if !networkMonitor.isConnected && viewModel.conversations.isEmpty && !viewModel.isLoading {
                             HStack {
                                 Image(systemName: "wifi.slash")
                                     .foregroundStyle(.white)
