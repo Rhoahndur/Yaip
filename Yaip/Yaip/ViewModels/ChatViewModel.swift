@@ -141,9 +141,14 @@ class ChatViewModel: ObservableObject {
     
     /// Send a message
     func sendMessage() async {
+        print("🚀 sendMessage() called")
+        print("   Current messages count: \(messages.count)")
+        
         guard let currentUserID = authManager.currentUserID,
               let conversationID = conversation.id else {
             print("⚠️ Missing currentUserID or conversationID")
+            print("   currentUserID: \(String(describing: authManager.currentUserID))")
+            print("   conversationID: \(String(describing: conversation.id))")
             return
         }
         
@@ -151,7 +156,7 @@ class ChatViewModel: ObservableObject {
         let text = messageText.trimmingCharacters(in: .whitespacesAndNewlines)
         let image = selectedImage
         
-        print("📝 SendMessage called - text: '\(text)', hasImage: \(image != nil)")
+        print("📝 SendMessage validated - text: '\(text)', hasImage: \(image != nil)")
         
         guard !text.isEmpty || image != nil else {
             print("⚠️ No text or image to send")
@@ -161,6 +166,7 @@ class ChatViewModel: ObservableObject {
         // Clear inputs immediately
         messageText = ""
         selectedImage = nil
+        print("✅ Cleared input fields")
         
         // Stop typing indicator
         await updateTypingStatus(false)

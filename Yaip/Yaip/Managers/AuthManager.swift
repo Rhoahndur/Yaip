@@ -160,26 +160,48 @@ class AuthManager: ObservableObject {
         isLoading = true
         defer { isLoading = false }
         
+        print("🔑 Attempting sign in...")
         let result = try await Auth.auth().signIn(withEmail: email, password: password)
+        print("✅ Firebase Auth sign in successful")
+        
+        // Fetch user profile (this triggers auth state listener)
         fetchUserProfile(userID: result.user.uid)
         
-        // Set user online
-        try? await presenceService.setOnline(userID: result.user.uid)
+        // Try to set user online, but don't wait if network is slow (fire and forget)
+        Task {
+            try? await presenceService.setOnline(userID: result.user.uid)
+            print("✅ Set user online in Firestore")
+        }
+        
+        print("✅ Sign in complete")
     }
     
     /// Sign out
     func signOut() async throws {
-        // Set user offline and stop message listener before signing out
+        print("🚪 Sign out initiated")
+        
+        // Stop message listener immediately (doesn't require network)
+        await MessageListenerService.shared.stopListening()
+        print("✅ Stopped message listeners")
+        
+        // Try to set user offline, but don't wait if network is down
         if let userID = currentUserID {
-            try? await presenceService.setOffline(userID: userID)
-            await MessageListenerService.shared.stopListening()
+            Task {
+                // Fire and forget - if network is down, it's fine
+                try? await presenceService.setOffline(userID: userID)
+                print("✅ Set user offline in Firestore")
+            }
         }
         
+        // Sign out from Firebase Auth (this works offline)
         try Auth.auth().signOut()
+        print("✅ Signed out from Firebase Auth")
+        
         await MainActor.run {
             self.user = nil
             self.isAuthenticated = false
         }
+        print("✅ Sign out complete")
     }
     
     /// Reset password
