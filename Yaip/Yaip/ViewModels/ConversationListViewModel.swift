@@ -17,7 +17,7 @@ class ConversationListViewModel: ObservableObject {
     @Published var errorMessage: String?
     
     nonisolated(unsafe) private var listener: ListenerRegistration?
-    private let conversationService = ConversationService.shared
+    let conversationService = ConversationService.shared // Made public for NewChatView access
     let authManager = AuthManager.shared
     private let localStorage = LocalStorageManager.shared
     

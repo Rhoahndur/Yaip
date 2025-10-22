@@ -46,3 +46,27 @@ struct LastMessage: Codable, Equatable, Hashable {
     var timestamp: Date
 }
 
+/// Pending conversation (not yet saved to Firestore)
+/// Used when user selects recipients but hasn't sent first message yet
+struct PendingConversation: Identifiable {
+    let id: String = UUID().uuidString
+    let type: ConversationType
+    let participants: [String]
+    let name: String? // For groups only
+    
+    /// Convert to a real Conversation when ready to save
+    func toConversation() -> Conversation {
+        return Conversation(
+            id: self.id,
+            type: self.type,
+            participants: self.participants,
+            name: self.name,
+            imageURL: nil,
+            lastMessage: nil,
+            createdAt: Date(),
+            updatedAt: Date(),
+            unreadCount: [:]
+        )
+    }
+}
+

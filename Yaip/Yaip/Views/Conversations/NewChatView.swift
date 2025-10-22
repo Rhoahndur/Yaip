@@ -17,6 +17,8 @@ struct NewChatView: View {
     @State private var errorMessage: String?
     @State private var isGroupChatMode = false
     @State private var groupName = ""
+    @State private var navigateToPendingChat = false
+    @State private var pendingConversation: PendingConversation?
     
     var body: some View {
         NavigationStack {
@@ -169,6 +171,15 @@ struct NewChatView: View {
             }
             .navigationTitle("New Chat")
             .navigationBarTitleDisplayMode(.inline)
+            .navigationDestination(isPresented: $navigateToPendingChat) {
+                if let pending = pendingConversation {
+                    PendingChatView(pendingConversation: pending)
+                        .onDisappear {
+                            // When chat is dismissed, close the entire sheet
+                            dismiss()
+                        }
+                }
+            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
@@ -231,55 +242,74 @@ struct NewChatView: View {
     }
     
     private func createConversation() {
-        Task {
-            isCreating = true
-            errorMessage = nil
+        guard let currentUserID = conversationViewModel.authManager.currentUserID else {
+            errorMessage = "User not authenticated"
+            return
+        }
+        
+        // Create pending conversation (NOT saved to Firestore yet)
+        if isGroupChatMode {
+            print("📝 Creating pending group chat...")
+            print("   Name: \(groupName)")
+            print("   Selected users: \(selectedUsers.count)")
             
-            do {
-                if isGroupChatMode {
-                    // Create group conversation
-                    print("🔄 Creating group chat...")
-                    print("   Name: \(groupName)")
-                    print("   Selected users: \(selectedUsers.count)")
-                    
-                    guard let currentUserID = conversationViewModel.authManager.currentUserID else {
-                        throw ConversationError.invalidID
-                    }
-                    
-                    let participantIDs = selectedUsers.compactMap { $0.id }
-                    print("   Participant IDs: \(participantIDs)")
-                    print("   Current user: \(currentUserID)")
-                    
-                    let conversation = try await conversationViewModel.createGroupConversation(
-                        name: groupName.trimmingCharacters(in: .whitespaces),
-                        participants: participantIDs
+            let participantIDs = selectedUsers.compactMap { $0.id } + [currentUserID]
+            
+            pendingConversation = PendingConversation(
+                type: .group,
+                participants: participantIDs,
+                name: groupName.trimmingCharacters(in: .whitespaces)
+            )
+            
+            print("✅ Pending group chat created (not yet saved to Firestore)")
+        } else {
+            print("📝 Creating pending 1-on-1 chat...")
+            guard let selectedUser = selectedUsers.first,
+                  let otherUserID = selectedUser.id else {
+                errorMessage = "Invalid user selection"
+                return
+            }
+            print("   With: \(selectedUser.displayName)")
+            
+            // Check if conversation already exists
+            Task {
+                do {
+                    let existing = try await conversationViewModel.conversationService.findExistingConversation(
+                        between: [currentUserID, otherUserID]
                     )
                     
-                    print("✅ Group chat created: \(conversation.id ?? "no-id")")
-                } else {
-                    // Create 1-on-1 conversation
-                    print("🔄 Creating 1-on-1 chat...")
-                    guard let selectedUser = selectedUsers.first else { 
-                        print("❌ No selected user")
-                        return 
+                    if let existing = existing {
+                        // Conversation exists, just navigate to it
+                        print("✅ Found existing conversation: \(existing.id ?? "no-id")")
+                        await MainActor.run {
+                            // We can't navigate to existing conversation from here
+                            // So just dismiss and let user find it in their list
+                            dismiss()
+                        }
+                    } else {
+                        // Create pending conversation
+                        await MainActor.run {
+                            pendingConversation = PendingConversation(
+                                type: .oneOnOne,
+                                participants: [currentUserID, otherUserID],
+                                name: nil
+                            )
+                            navigateToPendingChat = true
+                            print("✅ Pending 1-on-1 chat created (not yet saved to Firestore)")
+                        }
                     }
-                    print("   With: \(selectedUser.displayName)")
-                    
-                    let conversation = try await conversationViewModel.createOneOnOneConversation(with: selectedUser)
-                    print("✅ 1-on-1 chat created: \(conversation.id ?? "no-id")")
-                }
-                
-                await MainActor.run {
-                    dismiss()
-                }
-            } catch {
-                print("❌ Error creating conversation: \(error)")
-                await MainActor.run {
-                    errorMessage = error.localizedDescription
-                    isCreating = false
+                } catch {
+                    print("❌ Error checking for existing conversation: \(error)")
+                    await MainActor.run {
+                        errorMessage = error.localizedDescription
+                    }
                 }
             }
+            return
         }
+        
+        // For group chats, navigate immediately
+        navigateToPendingChat = true
     }
 }
 
