@@ -12,6 +12,13 @@ struct MessageComposer: View {
     @Binding var selectedImage: UIImage?
     let onSend: () -> Void
     
+    init(text: Binding<String>, selectedImage: Binding<UIImage?>, onSend: @escaping () -> Void) {
+        self._text = text
+        self._selectedImage = selectedImage
+        self.onSend = onSend
+        print("💬 MessageComposer initialized")
+    }
+    
     var body: some View {
         VStack(spacing: 0) {
             // Image preview
@@ -48,6 +55,20 @@ struct MessageComposer: View {
                     .background(Color.gray.opacity(0.1))
                     .cornerRadius(20)
                     .lineLimit(1...5)
+                    .onChange(of: text) { oldValue, newValue in
+                        if !newValue.isEmpty {
+                            print("⌨️ Text changed: '\(newValue)'")
+                        }
+                    }
+                    .onSubmit {
+                        print("⌨️ Enter key pressed!")
+                        if canSend {
+                            print("✅ Triggering send via Enter key")
+                            onSend()
+                        } else {
+                            print("⚠️ Cannot send - empty message")
+                        }
+                    }
                 
                 // Send button
                 Button {
