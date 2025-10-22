@@ -18,21 +18,38 @@ class StorageService {
     
     /// Upload image to Firebase Storage
     func uploadImage(_ image: UIImage, path: String) async throws -> String {
+        print("📤 Starting image upload to path: \(path)")
+        
         // Resize and compress image
+        print("🖼️ Resizing image...")
         let resizedImage = image.resized(maxDimension: 1024)
+        
+        print("📦 Compressing image...")
         guard let imageData = resizedImage.compressed(maxSizeKB: 500) else {
+            print("❌ Image compression failed")
             throw StorageError.compressionFailed
         }
+        print("✅ Image compressed to \(imageData.count) bytes")
         
         let ref = storage.reference().child(path)
         let metadata = StorageMetadata()
         metadata.contentType = "image/jpeg"
         
+        print("⬆️ Uploading to Firebase Storage...")
         // Upload
-        _ = try await ref.putDataAsync(imageData, metadata: metadata)
+        do {
+            _ = try await ref.putDataAsync(imageData, metadata: metadata)
+            print("✅ Upload successful!")
+        } catch {
+            print("❌ Upload failed: \(error)")
+            print("❌ Error details: \(error.localizedDescription)")
+            throw error
+        }
         
         // Get download URL
+        print("🔗 Getting download URL...")
         let downloadURL = try await ref.downloadURL()
+        print("✅ Image uploaded successfully: \(downloadURL.absoluteString)")
         return downloadURL.absoluteString
     }
     

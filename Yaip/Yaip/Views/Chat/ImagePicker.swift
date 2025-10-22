@@ -22,9 +22,17 @@ struct ImagePicker: View {
         }
         .onChange(of: selectedItem) { oldValue, newValue in
             Task {
-                if let data = try? await newValue?.loadTransferable(type: Data.self),
-                   let uiImage = UIImage(data: data) {
-                    selectedImage = uiImage
+                print("📸 Photo picker selection changed")
+                if let data = try? await newValue?.loadTransferable(type: Data.self) {
+                    print("✅ Data loaded: \(data.count) bytes")
+                    if let uiImage = UIImage(data: data) {
+                        print("✅ UIImage created successfully")
+                        selectedImage = uiImage
+                    } else {
+                        print("❌ Failed to create UIImage from data")
+                    }
+                } else {
+                    print("❌ Failed to load data from picker")
                 }
             }
         }

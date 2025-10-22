@@ -18,6 +18,7 @@ struct MessageBubble: View {
             VStack(alignment: isFromCurrentUser ? .trailing : .leading, spacing: 2) {
                 // Image if present
                 if let mediaURL = message.mediaURL, message.mediaType == .image {
+                    let _ = print("🖼️ MessageBubble displaying image: \(mediaURL)")
                     AsyncImage(url: URL(string: mediaURL)) { phase in
                         switch phase {
                         case .empty:

@@ -143,6 +143,7 @@ class ChatViewModel: ObservableObject {
     func sendMessage() async {
         guard let currentUserID = authManager.currentUserID,
               let conversationID = conversation.id else {
+            print("⚠️ Missing currentUserID or conversationID")
             return
         }
         
@@ -150,7 +151,10 @@ class ChatViewModel: ObservableObject {
         let text = messageText.trimmingCharacters(in: .whitespacesAndNewlines)
         let image = selectedImage
         
+        print("📝 SendMessage called - text: '\(text)', hasImage: \(image != nil)")
+        
         guard !text.isEmpty || image != nil else {
+            print("⚠️ No text or image to send")
             return
         }
         
@@ -166,17 +170,22 @@ class ChatViewModel: ObservableObject {
         var mediaType: MediaType?
         
         if let image = image {
+            print("🖼️ Image present, starting upload...")
             isUploadingImage = true
             do {
                 mediaURL = try await storageService.uploadChatImage(image, conversationID: conversationID)
                 mediaType = .image
+                print("✅ Image upload complete, mediaURL: \(mediaURL ?? "nil")")
             } catch {
-                print("Error uploading image: \(error)")
+                print("❌ Error uploading image: \(error)")
+                print("❌ Error details: \(error.localizedDescription)")
                 errorMessage = "Failed to upload image"
                 isUploadingImage = false
                 return
             }
             isUploadingImage = false
+        } else {
+            print("ℹ️ No image to upload")
         }
         
         // Create message

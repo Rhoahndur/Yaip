@@ -35,6 +35,31 @@ struct GroupMessageBubble: View {
                         .padding(.leading, 12)
                 }
                 
+                // Image if present
+                if let mediaURL = message.mediaURL, message.mediaType == .image {
+                    let _ = print("🖼️ GroupMessageBubble displaying image: \(mediaURL)")
+                    AsyncImage(url: URL(string: mediaURL)) { phase in
+                        switch phase {
+                        case .empty:
+                            ProgressView()
+                                .frame(width: 200, height: 200)
+                        case .success(let image):
+                            image
+                                .resizable()
+                                .scaledToFit()
+                                .frame(maxWidth: 250)
+                                .cornerRadius(18)
+                        case .failure:
+                            Image(systemName: "photo")
+                                .font(.largeTitle)
+                                .foregroundStyle(.secondary)
+                                .frame(width: 200, height: 200)
+                        @unknown default:
+                            EmptyView()
+                        }
+                    }
+                }
+                
                 // Message text
                 if let text = message.text {
                     Text(text)

@@ -51,6 +51,7 @@ struct MessageComposer: View {
                 
                 // Send button
                 Button {
+                    print("🔵 Send button tapped! canSend: \(canSend)")
                     onSend()
                 } label: {
                     Image(systemName: "arrow.up.circle.fill")
