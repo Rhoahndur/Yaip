@@ -7,6 +7,7 @@
 
 import Foundation
 import FirebaseFirestore
+import Combine
 
 /// Message model representing a single chat message
 struct Message: Codable, Identifiable, Equatable, Hashable {

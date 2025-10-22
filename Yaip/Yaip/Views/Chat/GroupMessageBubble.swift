@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import Combine
 
 struct GroupMessageBubble: View {
     let message: Message

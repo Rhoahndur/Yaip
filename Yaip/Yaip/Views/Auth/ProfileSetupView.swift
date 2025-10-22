@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import Combine
 
 struct ProfileSetupView: View {
     @Environment(\.dismiss) private var dismiss

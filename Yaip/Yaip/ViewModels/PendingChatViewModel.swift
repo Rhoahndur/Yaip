@@ -7,6 +7,8 @@
 
 import Foundation
 import FirebaseFirestore
+import Combine
+import UIKit
 
 /// ViewModel for pending conversations (not yet saved to Firestore)
 @MainActor
@@ -92,11 +94,7 @@ class PendingChatViewModel: ObservableObject {
                 mediaType: selectedImage != nil ? .image : nil,
                 timestamp: Date(),
                 status: .sent,
-                readBy: [currentUserID],
-                replyTo: nil,
-                reactions: [:],
-                isEdited: false,
-                isDeleted: false
+                readBy: [currentUserID]
             )
             
             try await messageService.sendMessage(message)
