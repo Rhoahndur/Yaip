@@ -141,32 +141,38 @@ class ChatViewModel: ObservableObject {
     
     /// Send a message
     func sendMessage() async {
-        print("🚀 sendMessage() called")
+        print("🚀 ==== sendMessage() START ====")
         print("   Current messages count: \(messages.count)")
+        print("   messageText: '\(messageText)'")
+        print("   selectedImage: \(selectedImage != nil ? "present" : "nil")")
         
         guard let currentUserID = authManager.currentUserID,
               let conversationID = conversation.id else {
-            print("⚠️ Missing currentUserID or conversationID")
+            print("❌ EARLY RETURN: Missing currentUserID or conversationID")
             print("   currentUserID: \(String(describing: authManager.currentUserID))")
             print("   conversationID: \(String(describing: conversation.id))")
             return
         }
+        print("✅ UserID and ConversationID validated")
         
         // Ensure we have either text or image
         let text = messageText.trimmingCharacters(in: .whitespacesAndNewlines)
         let image = selectedImage
         
-        print("📝 SendMessage validated - text: '\(text)', hasImage: \(image != nil)")
+        print("📝 Text after trim: '\(text)' (length: \(text.count))")
+        print("📝 Image: \(image != nil ? "present" : "nil")")
         
         guard !text.isEmpty || image != nil else {
-            print("⚠️ No text or image to send")
+            print("❌ EARLY RETURN: No text or image to send")
             return
         }
+        print("✅ Message content validated")
         
         // Clear inputs immediately
         messageText = ""
         selectedImage = nil
         print("✅ Cleared input fields")
+        print("   New messageText: '\(messageText)'")
         
         // Stop typing indicator
         await updateTypingStatus(false)
@@ -211,7 +217,11 @@ class ChatViewModel: ObservableObject {
         
         // Optimistic update - add to UI immediately (ALWAYS show, even if offline)
         messages.append(newMessage)
-        print("✅ Added message to UI optimistically (ID: \(messageID), status: \(newMessage.status))")
+        print("✅ ===== MESSAGE ADDED TO UI ===== ")
+        print("   Message ID: \(messageID)")
+        print("   Message text: '\(newMessage.text ?? "nil")'")
+        print("   Message status: \(newMessage.status)")
+        print("   Total messages now: \(messages.count)")
         
         // Save locally first (so it persists across app restarts)
         try? localStorage.saveMessage(newMessage)
