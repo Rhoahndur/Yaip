@@ -100,7 +100,19 @@ class PendingChatViewModel: ObservableObject {
             try await messageService.sendMessage(message)
             print("✅ First message sent!")
             
-            // 4. Update state to show we've created the conversation
+            // 4. Update conversation's lastMessage field
+            let lastMessage = LastMessage(
+                text: message.text ?? "📷 Photo",
+                senderID: currentUserID,
+                timestamp: message.timestamp
+            )
+            try await conversationService.updateLastMessage(
+                conversationID: conversation.id!,
+                lastMessage: lastMessage
+            )
+            print("✅ Updated lastMessage in conversation")
+            
+            // 5. Update state to show we've created the conversation
             await MainActor.run {
                 self.createdConversation = conversation
                 self.conversationCreated = true
