@@ -39,6 +39,7 @@ class LocalNotificationManager: NSObject, ObservableObject {
     /// Send a local notification for a new message
     func sendMessageNotification(
         conversationID: String,
+        messageID: String,
         senderName: String,
         messageText: String,
         isGroup: Bool,
@@ -69,9 +70,10 @@ class LocalNotificationManager: NSObject, ObservableObject {
         content.badge = NSNumber(value: badgeCount)
         print("🔢 Setting badge count to: \(badgeCount)")
         
-        // Add conversation ID to userInfo for handling tap
+        // Add conversation ID and message ID to userInfo for handling tap
         content.userInfo = [
             "conversationID": conversationID,
+            "messageID": messageID,
             "type": "new_message"
         ]
         
@@ -142,13 +144,21 @@ extension LocalNotificationManager: UNUserNotificationCenterDelegate {
         print("   UserInfo: \(userInfo)")
         
         if let conversationID = userInfo["conversationID"] as? String {
+            let messageID = userInfo["messageID"] as? String
             print("   Opening conversation: \(conversationID)")
+            if let messageID = messageID {
+                print("   Scrolling to message: \(messageID)")
+            }
             // Post notification for deep linking
             Task { @MainActor in
+                var notificationUserInfo: [String: Any] = ["conversationID": conversationID]
+                if let messageID = messageID {
+                    notificationUserInfo["messageID"] = messageID
+                }
                 NotificationCenter.default.post(
                     name: .openConversation,
                     object: nil,
-                    userInfo: ["conversationID": conversationID]
+                    userInfo: notificationUserInfo
                 )
             }
         }

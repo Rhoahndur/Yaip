@@ -10,6 +10,7 @@ import FirebaseFirestore
 
 struct ChatView: View {
     let conversation: Conversation
+    let scrollToMessageID: String?
     @StateObject private var viewModel: ChatViewModel
     @StateObject private var authManager = AuthManager.shared
     @FocusState private var isTextFieldFocused: Bool
@@ -17,9 +18,11 @@ struct ChatView: View {
     @State private var otherUserStatus: UserStatus = .offline
     @State private var otherUserLastSeen: Date?
     @State private var statusListener: ListenerRegistration?
+    @State private var hasScrolledToTarget = false
     
-    init(conversation: Conversation) {
+    init(conversation: Conversation, scrollToMessageID: String? = nil) {
         self.conversation = conversation
+        self.scrollToMessageID = scrollToMessageID
         self._viewModel = StateObject(wrappedValue: ChatViewModel(conversation: conversation))
     }
     
@@ -50,6 +53,8 @@ struct ChatView: View {
                             .padding(.top, 100)
                         } else {
                             ForEach(viewModel.messages) { message in
+                                let isTargetMessage = message.id == scrollToMessageID
+                                
                                 if conversation.type == .group {
                                     GroupMessageBubble(
                                         message: message,
@@ -59,12 +64,20 @@ struct ChatView: View {
                                         currentUserID: authManager.currentUserID ?? ""
                                     )
                                     .id(message.id)
+                                    .background(
+                                        isTargetMessage ? Color.yellow.opacity(0.3) : Color.clear
+                                    )
+                                    .animation(.easeInOut(duration: 1.5).repeatCount(2, autoreverses: true), value: hasScrolledToTarget)
                                 } else {
                                     MessageBubble(
                                         message: message,
                                         isFromCurrentUser: message.senderID == authManager.currentUserID
                                     )
                                     .id(message.id)
+                                    .background(
+                                        isTargetMessage ? Color.yellow.opacity(0.3) : Color.clear
+                                    )
+                                    .animation(.easeInOut(duration: 1.5).repeatCount(2, autoreverses: true), value: hasScrolledToTarget)
                                 }
                             }
                         }
@@ -72,17 +85,47 @@ struct ChatView: View {
                     .padding(.vertical, 8)
                 }
                 .onChange(of: viewModel.messages.count) { oldValue, newValue in
-                    // Auto-scroll to bottom when new message arrives
-                    if let lastMessage = viewModel.messages.last {
-                        withAnimation {
-                            proxy.scrollTo(lastMessage.id, anchor: .bottom)
+                    // If we have a target message to scroll to, do that first
+                    if let targetID = scrollToMessageID, !hasScrolledToTarget {
+                        if viewModel.messages.contains(where: { $0.id == targetID }) {
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                withAnimation {
+                                    proxy.scrollTo(targetID, anchor: .center)
+                                }
+                                hasScrolledToTarget = true
+                                print("📍 Scrolled to target message: \(targetID)")
+                            }
+                        }
+                    } else {
+                        // Auto-scroll to bottom when new message arrives (normal behavior)
+                        if let lastMessage = viewModel.messages.last {
+                            withAnimation {
+                                proxy.scrollTo(lastMessage.id, anchor: .bottom)
+                            }
                         }
                     }
                 }
                 .onAppear {
-                    // Scroll to bottom on appear
-                    if let lastMessage = viewModel.messages.last {
-                        proxy.scrollTo(lastMessage.id, anchor: .bottom)
+                    // If we have a target message, scroll to it, otherwise scroll to bottom
+                    if let targetID = scrollToMessageID {
+                        print("🎯 Target message ID: \(targetID)")
+                        // Wait for messages to load, then scroll
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                            if viewModel.messages.contains(where: { $0.id == targetID }) {
+                                withAnimation {
+                                    proxy.scrollTo(targetID, anchor: .center)
+                                }
+                                hasScrolledToTarget = true
+                                print("📍 Scrolled to target message on appear: \(targetID)")
+                            } else {
+                                print("⚠️ Target message not found in loaded messages")
+                            }
+                        }
+                    } else {
+                        // Normal behavior: scroll to bottom
+                        if let lastMessage = viewModel.messages.last {
+                            proxy.scrollTo(lastMessage.id, anchor: .bottom)
+                        }
                     }
                 }
             }

@@ -148,6 +148,7 @@ class MessageListenerService: ObservableObject {
         // Send local notification (iOS handles if user is in the app)
         await LocalNotificationManager.shared.sendMessageNotification(
             conversationID: conversationID,
+            messageID: messageID, // Pass message ID for deep linking
             senderName: senderName,
             messageText: messageText,
             isGroup: conversationDetails.isGroup,

@@ -15,6 +15,7 @@ struct ConversationListView: View {
     @StateObject private var networkMonitor = NetworkMonitor.shared
     @State private var showNewChat = false
     @State private var navigationPath = NavigationPath()
+    @State private var scrollToMessageID: String? = nil
     
     var body: some View {
         NavigationStack(path: $navigationPath) {
@@ -107,7 +108,11 @@ struct ConversationListView: View {
             }
             .navigationTitle("Chats")
             .navigationDestination(for: Conversation.self) { conversation in
-                ChatView(conversation: conversation)
+                ChatView(conversation: conversation, scrollToMessageID: scrollToMessageID)
+                    .onAppear {
+                        // Clear scroll target after navigation
+                        scrollToMessageID = nil
+                    }
             }
             .toolbar {
                 // Current user indicator (top center)
@@ -168,7 +173,14 @@ struct ConversationListView: View {
             return
         }
         
+        // Extract optional messageID
+        let messageID = notification.userInfo?["messageID"] as? String
+        
         print("🔗 Deep link: Opening conversation \(conversationID)")
+        if let messageID = messageID {
+            print("🔗 Will scroll to message: \(messageID)")
+            scrollToMessageID = messageID
+        }
         
         // Find the conversation in our list
         if let conversation = viewModel.conversations.first(where: { $0.id == conversationID }) {
