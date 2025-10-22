@@ -20,8 +20,12 @@ struct PendingChatView: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            // Empty state - no messages yet
-            if viewModel.messages.isEmpty && !viewModel.conversationCreated {
+            if viewModel.conversationCreated, let conversation = viewModel.createdConversation {
+                // Conversation was created, now show regular ChatView
+                // ChatView has its own MessageComposer, so don't show ours
+                ChatView(conversation: conversation)
+            } else {
+                // Pending state - show empty state + our own composer
                 VStack(spacing: 12) {
                     Image(systemName: "bubble.left.and.bubble.right")
                         .font(.system(size: 48))
@@ -36,18 +40,15 @@ struct PendingChatView: View {
                         .foregroundStyle(.secondary)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if viewModel.conversationCreated, let conversation = viewModel.createdConversation {
-                // Conversation was created, now show regular ChatView
-                ChatView(conversation: conversation)
-            }
-            
-            // Message composer (always visible)
-            MessageComposer(
-                text: $viewModel.messageText,
-                selectedImage: $viewModel.selectedImage
-            ) {
-                Task {
-                    await viewModel.sendFirstMessage()
+                
+                // Message composer (only show when pending)
+                MessageComposer(
+                    text: $viewModel.messageText,
+                    selectedImage: $viewModel.selectedImage
+                ) {
+                    Task {
+                        await viewModel.sendFirstMessage()
+                    }
                 }
             }
         }
