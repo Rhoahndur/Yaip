@@ -1,0 +1,53 @@
+rules_version = '2';
+
+// Firebase Storage Security Rules for Yaip
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Helper function: Check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Helper function: Check if user owns the file
+    function isOwner(userID) {
+      return request.auth.uid == userID;
+    }
+    
+    // Helper function: Check file size (max 5MB)
+    function isValidSize() {
+      return request.resource.size < 5 * 1024 * 1024;
+    }
+    
+    // Helper function: Check if file is an image
+    function isImage() {
+      return request.resource.contentType.matches('image/.*');
+    }
+    
+    // Profile images: Users can upload/update their own profile images
+    match /profile_images/{userID}/{imageID} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() 
+                   && isOwner(userID) 
+                   && isImage() 
+                   && isValidSize();
+    }
+    
+    // Chat images: Any authenticated user can upload and read chat images
+    match /chat_images/{conversationID}/{imageID} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() 
+                   && isImage() 
+                   && isValidSize();
+      // Note: We trust Firestore rules to handle conversation access control
+      // Storage rules just ensure authenticated users can share images
+    }
+    
+    // Default: Deny all other access
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
+
+

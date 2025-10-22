@@ -268,4 +268,25 @@ also while i have the app minimized, ie in main phone view im still not seeing p
 ### Prompt 78:
 ah gotcha OK yeah lets stick with current setup for now since for MVP this'll do
 
+### Prompt 79:
+what about deployment - what would you suggest? Deployment: Running on local emulator/simulator with deployed backend (TestFlight/APK/Expo Go if possible, but not required for MVP)
+
+### Prompt 80:
+oh shoot im not able to send even the stock images in the like group chat
+
+### Prompt 81:
+oh i meant sending an image (from stock images) like one of these six images it'll show up like an empty message
+
+### Prompt 82:
+still continuing to see empty messages when trying to send images in group chat (I waited a couple of minutes before trying) - heres the console output
+
+### Prompt 83:
+ah hang on let me check
+
+### Prompt 84:
+[console output showing image upload is working but still seeing empty messages]
+
+### Prompt 85:
+yep working great now niceee
+
 ---

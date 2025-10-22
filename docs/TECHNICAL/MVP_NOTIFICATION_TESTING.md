@@ -224,3 +224,4 @@ When ready to move to production, you'll need:
 
 ✅ **Your MVP is solid! Test confidently with the 30-second window.**
 
+
