@@ -13,6 +13,7 @@ struct ChatView: View {
     let scrollToMessageID: String?
     @StateObject private var viewModel: ChatViewModel
     @StateObject private var authManager = AuthManager.shared
+    @StateObject private var networkMonitor = NetworkMonitor.shared
     @FocusState private var isTextFieldFocused: Bool
     @State private var showingDetail = false
     @State private var otherUserStatus: UserStatus = .offline
@@ -28,6 +29,20 @@ struct ChatView: View {
     
     var body: some View {
         VStack(spacing: 0) {
+            // Offline banner
+            if !networkMonitor.isConnected {
+                HStack(spacing: 8) {
+                    Image(systemName: "wifi.slash")
+                        .foregroundStyle(.white)
+                    Text("No internet connection - Messages will send when reconnected")
+                        .font(.caption)
+                        .foregroundStyle(.white)
+                }
+                .padding(.vertical, 8)
+                .frame(maxWidth: .infinity)
+                .background(Color.orange)
+            }
+            
             // Messages list
             ScrollViewReader { proxy in
                 ScrollView {

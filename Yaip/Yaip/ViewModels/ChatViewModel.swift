@@ -168,6 +168,7 @@ class ChatViewModel: ObservableObject {
         // Upload image if present
         var mediaURL: String?
         var mediaType: MediaType?
+        var imageUploadFailed = false
         
         if let image = image {
             print("🖼️ Image present, starting upload...")
@@ -179,9 +180,8 @@ class ChatViewModel: ObservableObject {
             } catch {
                 print("❌ Error uploading image: \(error)")
                 print("❌ Error details: \(error.localizedDescription)")
-                errorMessage = "Failed to upload image"
-                isUploadingImage = false
-                return
+                imageUploadFailed = true
+                // Don't return - still show message as pending
             }
             isUploadingImage = false
         } else {
@@ -198,20 +198,29 @@ class ChatViewModel: ObservableObject {
             mediaURL: mediaURL,
             mediaType: mediaType,
             timestamp: Date(),
-            status: .sending,
+            status: imageUploadFailed ? .failed : .sending,
             readBy: [currentUserID]
         )
         newMessage.id = messageID
         
-        // Optimistic update - add to UI immediately
+        // Optimistic update - add to UI immediately (ALWAYS show, even if offline)
         messages.append(newMessage)
+        print("✅ Added message to UI optimistically (ID: \(messageID), status: \(newMessage.status))")
         
-        // Save locally first
+        // Save locally first (so it persists across app restarts)
         try? localStorage.saveMessage(newMessage)
+        print("✅ Saved message locally")
+        
+        // If image upload failed, don't try to send to Firestore yet
+        if imageUploadFailed {
+            print("⚠️ Image upload failed - message saved locally for later retry")
+            return
+        }
         
         // Send to Firestore
         do {
             try await messageService.sendMessage(newMessage)
+            print("✅ Message sent to Firestore")
             
             // Mark as synced
             try? localStorage.markMessageSynced(id: messageID)
@@ -219,6 +228,7 @@ class ChatViewModel: ObservableObject {
             // Update message status to sent
             if let index = messages.firstIndex(where: { $0.id == messageID }) {
                 messages[index].status = .sent
+                print("✅ Updated message status to .sent in UI")
             }
             
             // Update conversation's last message
@@ -232,14 +242,16 @@ class ChatViewModel: ObservableObject {
                 conversationID: conversationID,
                 lastMessage: lastMessage
             )
+            print("✅ Updated conversation lastMessage")
             
         } catch {
-            print("Error sending message: \(error.localizedDescription)")
-            // Update message status to failed
+            print("❌ Error sending message to Firestore: \(error.localizedDescription)")
+            // Update message status to failed (but keep it visible!)
             if let index = messages.firstIndex(where: { $0.id == messageID }) {
                 messages[index].status = .failed
+                print("⚠️ Updated message status to .failed (will retry when online)")
             }
-            errorMessage = "Failed to send message"
+            // Don't show error to user - message will auto-retry when connection restored
         }
     }
     
