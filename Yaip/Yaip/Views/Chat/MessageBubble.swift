@@ -12,7 +12,7 @@ struct MessageBubble: View {
     let isFromCurrentUser: Bool
     var onRetry: (() -> Void)? = nil
     
-    @State private var cachedImage: UIImage?
+    @ObservedObject private var imageUploadManager = ImageUploadManager.shared
     
     var body: some View {
         HStack(alignment: .bottom, spacing: 8) {
@@ -22,10 +22,9 @@ struct MessageBubble: View {
                 // Image + Text together in one bubble (if both present)
                 if message.mediaType == .image {
                     VStack(alignment: .leading, spacing: 0) {
-                        // Image part
+                        // Image part - observe ImageUploadManager state
                         if let mediaURL = message.mediaURL {
                             // Image uploaded - show from URL
-                            let _ = print("🖼️ MessageBubble displaying image: \(mediaURL)")
                             AsyncImage(url: URL(string: mediaURL)) { phase in
                                 switch phase {
                                 case .empty:
@@ -45,29 +44,40 @@ struct MessageBubble: View {
                                     EmptyView()
                                 }
                             }
-                        } else if let cachedImage = cachedImage {
-                            // Image pending upload - show cached image with overlay
+                        } else if let messageID = message.id,
+                                  let cachedImage = imageUploadManager.getCachedImage(for: messageID) {
+                            // Image cached/uploading - show with state overlay
+                            let imageState = imageUploadManager.getState(for: messageID)
+                            
                             ZStack(alignment: .bottomTrailing) {
                                 Image(uiImage: cachedImage)
                                     .resizable()
                                     .scaledToFit()
                                     .frame(maxWidth: 250)
-                                    .opacity(message.status == .failed ? 0.6 : 0.9)
+                                    .opacity(imageState.isRetryable ? 0.6 : 0.9)
                                 
-                                // Status overlay
+                                // Status overlay based on ImageUploadManager state
                                 HStack(spacing: 4) {
-                                    if message.status == .failed {
-                                        Image(systemName: "exclamationmark.circle.fill")
-                                            .foregroundStyle(.white)
-                                            .background(Circle().fill(Color.red).padding(-4))
-                                        Text("Failed")
-                                            .font(.caption2)
-                                            .foregroundStyle(.white)
-                                    } else {
-                                        ProgressView()
+                                    switch imageState {
+                                    case .uploading(let progress):
+                                        ProgressView(value: progress)
                                             .scaleEffect(0.7)
                                             .tint(.white)
                                         Text("Uploading...")
+                                            .font(.caption2)
+                                            .foregroundStyle(.white)
+                                    case .failed(_, let retryCount):
+                                        Image(systemName: "exclamationmark.circle.fill")
+                                            .foregroundStyle(.white)
+                                            .background(Circle().fill(Color.red).padding(-4))
+                                        Text(retryCount < 2 ? "Retrying..." : "Tap to retry")
+                                            .font(.caption2)
+                                            .foregroundStyle(.white)
+                                    default:
+                                        ProgressView()
+                                            .scaleEffect(0.7)
+                                            .tint(.white)
+                                        Text("Sending...")
                                             .font(.caption2)
                                             .foregroundStyle(.white)
                                     }
@@ -84,12 +94,12 @@ struct MessageBubble: View {
                                     Image(systemName: "exclamationmark.triangle")
                                         .font(.system(size: 40))
                                         .foregroundStyle(.red)
-                                    Text("Image upload failed")
+                                    Text("Image not found")
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
                                 } else {
                                     ProgressView()
-                                    Text("Loading image...")
+                                    Text("Loading...")
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
                                 }
@@ -172,15 +182,6 @@ struct MessageBubble: View {
         .onTapGesture {
             if message.status == .failed {
                 onRetry?()
-            }
-        }
-        .onAppear {
-            // Load cached image if message has no URL yet
-            if message.mediaType == .image && message.mediaURL == nil,
-               let messageID = message.id {
-                Task { @MainActor in
-                    cachedImage = LocalStorageManager.shared.loadImage(forMessageID: messageID)
-                }
             }
         }
     }
