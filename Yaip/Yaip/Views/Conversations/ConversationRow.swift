@@ -111,6 +111,14 @@ struct ConversationRow: View {
         .task {
             await loadConversationDetails()
         }
+        .onChange(of: networkMonitor.isConnected) { oldValue, newValue in
+            // Reload status when reconnecting
+            if !oldValue && newValue && conversation.type == .oneOnOne {
+                Task {
+                    await loadConversationDetails()
+                }
+            }
+        }
         .onDisappear {
             // Clean up listener when view disappears
             statusListener?.remove()

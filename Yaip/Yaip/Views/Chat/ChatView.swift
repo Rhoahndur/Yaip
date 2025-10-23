@@ -237,9 +237,14 @@ struct ChatView: View {
         .onChange(of: networkMonitor.isConnected) { oldValue, newValue in
             // Auto-retry when network comes back online
             if !oldValue && newValue {
-                print("🌐 Network reconnected - retrying failed messages")
+                print("🌐 Network reconnected - retrying failed messages and reloading status")
                 Task {
                     await viewModel.retryAllFailedMessages()
+                    
+                    // Reload user status for 1-on-1 chats
+                    if conversation.type == .oneOnOne {
+                        await loadOtherUserStatus()
+                    }
                 }
             }
         }
