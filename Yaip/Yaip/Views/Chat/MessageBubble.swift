@@ -17,28 +17,51 @@ struct MessageBubble: View {
             if isFromCurrentUser { Spacer(minLength: 50) }
             
             VStack(alignment: isFromCurrentUser ? .trailing : .leading, spacing: 2) {
-                // Image if present
-                if let mediaURL = message.mediaURL, message.mediaType == .image {
-                    let _ = print("🖼️ MessageBubble displaying image: \(mediaURL)")
-                    AsyncImage(url: URL(string: mediaURL)) { phase in
-                        switch phase {
-                        case .empty:
-                            ProgressView()
-                                .frame(width: 200, height: 200)
-                        case .success(let image):
-                            image
-                                .resizable()
-                                .scaledToFit()
-                                .frame(maxWidth: 250)
-                                .cornerRadius(18)
-                        case .failure:
-                            Image(systemName: "photo")
-                                .font(.largeTitle)
-                                .foregroundStyle(.secondary)
-                                .frame(width: 200, height: 200)
-                        @unknown default:
-                            EmptyView()
+                // Image handling
+                if message.mediaType == .image {
+                    if let mediaURL = message.mediaURL {
+                        // Image uploaded - show from URL
+                        let _ = print("🖼️ MessageBubble displaying image: \(mediaURL)")
+                        AsyncImage(url: URL(string: mediaURL)) { phase in
+                            switch phase {
+                            case .empty:
+                                ProgressView()
+                                    .frame(width: 200, height: 200)
+                            case .success(let image):
+                                image
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(maxWidth: 250)
+                                    .cornerRadius(18)
+                            case .failure:
+                                Image(systemName: "photo")
+                                    .font(.largeTitle)
+                                    .foregroundStyle(.secondary)
+                                    .frame(width: 200, height: 200)
+                            @unknown default:
+                                EmptyView()
+                            }
                         }
+                    } else {
+                        // Image pending upload - show placeholder
+                        VStack(spacing: 8) {
+                            if message.status == .failed {
+                                Image(systemName: "exclamationmark.triangle")
+                                    .font(.system(size: 40))
+                                    .foregroundStyle(.red)
+                                Text("Image upload failed")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            } else {
+                                ProgressView()
+                                Text("Uploading image...")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        .frame(width: 200, height: 200)
+                        .background(Color(.systemGray6))
+                        .cornerRadius(18)
                     }
                 }
                 

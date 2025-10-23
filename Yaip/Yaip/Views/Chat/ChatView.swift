@@ -77,7 +77,12 @@ struct ChatView: View {
                                         senderName: viewModel.getSenderName(for: message.senderID),
                                         isFromCurrentUser: message.senderID == authManager.currentUserID,
                                         conversation: conversation,
-                                        currentUserID: authManager.currentUserID ?? ""
+                                        currentUserID: authManager.currentUserID ?? "",
+                                        onRetry: {
+                                            Task {
+                                                await viewModel.retryMessage(message)
+                                            }
+                                        }
                                     )
                                     .id(message.id)
                                     .background(

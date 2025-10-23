@@ -14,6 +14,7 @@ struct GroupMessageBubble: View {
     let isFromCurrentUser: Bool
     let conversation: Conversation
     let currentUserID: String
+    var onRetry: (() -> Void)? = nil
     
     @State private var showingReadReceipts = false
     
@@ -36,28 +37,51 @@ struct GroupMessageBubble: View {
                         .padding(.leading, 12)
                 }
                 
-                // Image if present
-                if let mediaURL = message.mediaURL, message.mediaType == .image {
-                    let _ = print("🖼️ GroupMessageBubble displaying image: \(mediaURL)")
-                    AsyncImage(url: URL(string: mediaURL)) { phase in
-                        switch phase {
-                        case .empty:
-                            ProgressView()
-                                .frame(width: 200, height: 200)
-                        case .success(let image):
-                            image
-                                .resizable()
-                                .scaledToFit()
-                                .frame(maxWidth: 250)
-                                .cornerRadius(18)
-                        case .failure:
-                            Image(systemName: "photo")
-                                .font(.largeTitle)
-                                .foregroundStyle(.secondary)
-                                .frame(width: 200, height: 200)
-                        @unknown default:
-                            EmptyView()
+                // Image handling
+                if message.mediaType == .image {
+                    if let mediaURL = message.mediaURL {
+                        // Image uploaded - show from URL
+                        let _ = print("🖼️ GroupMessageBubble displaying image: \(mediaURL)")
+                        AsyncImage(url: URL(string: mediaURL)) { phase in
+                            switch phase {
+                            case .empty:
+                                ProgressView()
+                                    .frame(width: 200, height: 200)
+                            case .success(let image):
+                                image
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(maxWidth: 250)
+                                    .cornerRadius(18)
+                            case .failure:
+                                Image(systemName: "photo")
+                                    .font(.largeTitle)
+                                    .foregroundStyle(.secondary)
+                                    .frame(width: 200, height: 200)
+                            @unknown default:
+                                EmptyView()
+                            }
                         }
+                    } else {
+                        // Image pending upload - show placeholder
+                        VStack(spacing: 8) {
+                            if message.status == .failed {
+                                Image(systemName: "exclamationmark.triangle")
+                                    .font(.system(size: 40))
+                                    .foregroundStyle(.red)
+                                Text("Image upload failed")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            } else {
+                                ProgressView()
+                                Text("Uploading image...")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        .frame(width: 200, height: 200)
+                        .background(Color(.systemGray6))
+                        .cornerRadius(18)
                     }
                 }
                 
@@ -79,6 +103,13 @@ struct GroupMessageBubble: View {
                     
                     if isFromCurrentUser {
                         statusIcon
+                        
+                        // Tap to retry indicator
+                        if message.status == .failed {
+                            Text("• Tap to retry")
+                                .font(.system(size: 11))
+                                .foregroundStyle(.red)
+                        }
                     }
                 }
             }
@@ -87,9 +118,13 @@ struct GroupMessageBubble: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 2)
+        .contentShape(Rectangle()) // Make entire area tappable
         .onTapGesture {
-            // Only show read receipts for your own messages in group chats
-            if isFromCurrentUser && conversation.type == .group {
+            // Priority: retry failed messages first
+            if message.status == .failed {
+                onRetry?()
+            } else if isFromCurrentUser && conversation.type == .group {
+                // Show read receipts for your own messages in group chats
                 showingReadReceipts = true
             }
         }
