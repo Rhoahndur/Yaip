@@ -130,13 +130,9 @@ class ChatViewModel: ObservableObject {
                 self.messages = mergedMessages
                 self.isLoading = false
                 
-                // Log merge results
-                let pendingCount = mergedMessages.filter { $0.status.isLocal }.count
-                print("🔀 Lifecycle-aware merge: Firestore=\(firestoreMessages.count), Local=\(pendingCount), Total=\(mergedMessages.count)")
-                
                 // Auto-retry pending messages if we're online
+                let pendingCount = mergedMessages.filter { $0.status.isLocal }.count
                 if pendingCount > 0 && self.networkMonitor.isConnected {
-                    print("🔄 Network online + \(pendingCount) pending messages - triggering auto-retry")
                     Task {
                         // Small delay to let UI settle
                         try? await Task.sleep(nanoseconds: 500_000_000)

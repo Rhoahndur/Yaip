@@ -184,8 +184,6 @@ struct ConversationRow: View {
                 self.otherUserStatus = status
             }
         }
-        
-        print("🔔 Real-time status listener started for user: \(userID)")
     }
 }
 

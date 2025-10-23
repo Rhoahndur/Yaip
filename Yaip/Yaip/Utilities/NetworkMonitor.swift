@@ -40,22 +40,12 @@ class NetworkMonitor: ObservableObject {
             let newConnectionType = self.getConnectionType(from: path)
             
             DispatchQueue.main.async {
-                let didChange = self.isConnected != newConnectionState
-                
                 // Always update (let @Published handle change notification)
                 self.isConnected = newConnectionState
                 self.connectionType = newConnectionType
-                
-                if didChange {
-                    print("📡 Network status changed: \(newConnectionState ? "Connected ✅" : "Disconnected ❌")")
-                    print("   Path status: \(path.status)")
-                    print("   Connection type: \(newConnectionType)")
-                    print("   Available interfaces: \(path.availableInterfaces)")
-                }
             }
         }
         monitor.start(queue: queue)
-        print("🔍 Network monitoring started")
     }
     
     func stopMonitoring() {

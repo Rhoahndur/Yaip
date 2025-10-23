@@ -197,7 +197,6 @@ struct ChatView: View {
         }
         .networkStateBanner()
         .onNetworkReconnect {
-            print("🌐 Network reconnected - retrying failed messages and reloading status")
             await viewModel.retryAllFailedMessages()
             
             // Reload user status for 1-on-1 chats

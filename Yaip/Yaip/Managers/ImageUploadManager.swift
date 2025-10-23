@@ -55,15 +55,11 @@ class ImageUploadManager: ObservableObject {
     
     /// Cache image locally and return the state
     func cacheImage(_ image: UIImage, for messageID: String) {
-        print("💾 Caching image for message: \(messageID)")
-        
         // Save to disk
         localStorage.saveImage(image, forMessageID: messageID)
         
         // Update state
         imageStates[messageID] = .cached(image)
-        
-        print("✅ Image cached successfully")
     }
     
     /// Upload image to Firebase Storage (if online)
@@ -71,13 +67,11 @@ class ImageUploadManager: ObservableObject {
     func uploadImage(for messageID: String, conversationID: String) async -> String? {
         // Check if already uploading
         guard !activeUploads.contains(messageID) else {
-            print("⚠️ Upload already in progress for message: \(messageID)")
             return nil
         }
         
         // Check network
         guard networkMonitor.isConnected else {
-            print("📵 Offline - cannot upload image for message: \(messageID)")
             return nil
         }
         
@@ -89,11 +83,8 @@ class ImageUploadManager: ObservableObject {
                 return await uploadImage(for: messageID, conversationID: conversationID)
             }
             
-            print("❌ No cached image found for message: \(messageID)")
             return nil
         }
-        
-        print("🚀 Starting upload for message: \(messageID)")
         
         // Mark as uploading
         activeUploads.insert(messageID)
@@ -102,9 +93,6 @@ class ImageUploadManager: ObservableObject {
         do {
             // Upload to Firebase Storage
             let url = try await storageService.uploadChatImage(image, conversationID: conversationID)
-            
-            print("✅ Upload successful for message: \(messageID)")
-            print("   URL: \(url)")
             
             // Update state to uploaded
             imageStates[messageID] = .uploaded(url: url)
@@ -118,9 +106,6 @@ class ImageUploadManager: ObservableObject {
             return url
             
         } catch {
-            print("❌ Upload failed for message: \(messageID)")
-            print("   Error: \(error.localizedDescription)")
-            
             // Get current retry count
             let retryCount: Int
             if case .failed(_, let count) = imageStates[messageID] {
@@ -142,24 +127,19 @@ class ImageUploadManager: ObservableObject {
     /// Retry a failed upload (max 3 attempts)
     func retryUpload(for messageID: String, conversationID: String) async -> String? {
         guard case .failed(_, let retryCount) = imageStates[messageID] else {
-            print("⚠️ Cannot retry - message is not in failed state")
             return nil
         }
         
         // Max 3 retries
         guard retryCount < 3 else {
-            print("❌ Max retry attempts reached for message: \(messageID)")
             return nil
         }
-        
-        print("🔄 Retrying upload (attempt \(retryCount + 1)) for message: \(messageID)")
         
         // Try to load cached image from disk
         if let diskImage = localStorage.loadImage(forMessageID: messageID) {
             imageStates[messageID] = .cached(diskImage)
             return await uploadImage(for: messageID, conversationID: conversationID)
         } else {
-            print("❌ No cached image found for retry")
             return nil
         }
     }
@@ -192,8 +172,6 @@ class ImageUploadManager: ObservableObject {
     
     /// Clean up completed or abandoned uploads
     func cleanup(for messageID: String) {
-        print("🧹 Cleaning up image state for message: \(messageID)")
-        
         // Remove from state tracking
         imageStates.removeValue(forKey: messageID)
         
@@ -206,8 +184,6 @@ class ImageUploadManager: ObservableObject {
     
     /// Retry all failed uploads for a conversation
     func retryAllFailed(in conversationID: String, messageIDs: [String]) async -> [String: String] {
-        print("🔄 Retrying all failed uploads in conversation: \(conversationID)")
-        
         var uploadedURLs: [String: String] = [:]
         
         for messageID in messageIDs {
@@ -218,7 +194,6 @@ class ImageUploadManager: ObservableObject {
             }
         }
         
-        print("✅ Retry complete: \(uploadedURLs.count)/\(messageIDs.count) successful")
         return uploadedURLs
     }
     
@@ -228,7 +203,6 @@ class ImageUploadManager: ObservableObject {
             if case .uploading = state {
                 // If actively uploading but not in activeUploads, it's stuck
                 if !activeUploads.contains(messageID) {
-                    print("⚠️ Found stuck upload: \(messageID) - marking as failed")
                     imageStates[messageID] = .failed(error: "Upload timed out", retryCount: 0)
                 }
             }

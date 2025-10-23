@@ -131,7 +131,6 @@ class LocalStorageManager {
         
         do {
             try imageData.write(to: fileURL)
-            print("✅ Cached image for message: \(messageID)")
         } catch {
             print("❌ Failed to cache image: \(error.localizedDescription)")
         }
