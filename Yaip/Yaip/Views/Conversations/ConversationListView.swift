@@ -61,21 +61,6 @@ struct ConversationListView: View {
                 } else {
                     // Conversation list
                     VStack(spacing: 0) {
-                        // Network status indicator (only show if offline AND no data loaded)
-                        // This prevents false positives in simulators
-                        if !networkMonitor.isConnected && viewModel.conversations.isEmpty && !viewModel.isLoading {
-                            HStack {
-                                Image(systemName: "wifi.slash")
-                                    .foregroundStyle(.white)
-                                Text("Offline - Messages will send when reconnected")
-                                    .font(.caption)
-                                    .foregroundStyle(.white)
-                            }
-                            .padding(.vertical, 6)
-                            .frame(maxWidth: .infinity)
-                            .background(Color.orange)
-                        }
-                        
                         // Current user indicator - compact at top
                         if let user = authManager.user {
                             CurrentUserBadge(displayName: user.displayName, email: user.email)
@@ -165,7 +150,16 @@ struct ConversationListView: View {
             .onReceive(NotificationCenter.default.publisher(for: .openConversation)) { notification in
                 handleDeepLink(notification)
             }
+            .onChange(of: networkMonitor.isConnected) { oldValue, newValue in
+                // Reload conversation details and user statuses when reconnecting
+                if !oldValue && newValue {
+                    Task {
+                        await viewModel.fetchConversations()
+                    }
+                }
+            }
         }
+        .networkStateBanner()
     }
     
     private func handleDeepLink(_ notification: Notification) {
