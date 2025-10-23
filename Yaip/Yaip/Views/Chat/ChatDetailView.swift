@@ -9,7 +9,7 @@ import SwiftUI
 
 struct ChatDetailView: View {
     let conversation: Conversation
-    @StateObject private var authManager = AuthManager.shared
+    @ObservedObject private var authManager = AuthManager.shared
     @Environment(\.dismiss) private var dismiss
     @State private var participantUsers: [User] = []
     @State private var isLoadingParticipants = true

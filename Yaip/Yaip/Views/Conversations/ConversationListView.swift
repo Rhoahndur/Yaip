@@ -10,9 +10,9 @@ import Combine
 
 struct ConversationListView: View {
     @StateObject private var viewModel = ConversationListViewModel()
-    @StateObject private var authManager = AuthManager.shared
-    @StateObject private var messageListener = MessageListenerService.shared
-    @StateObject private var networkMonitor = NetworkMonitor.shared
+    @ObservedObject private var authManager = AuthManager.shared
+    @ObservedObject private var messageListener = MessageListenerService.shared
+    @ObservedObject private var networkMonitor = NetworkMonitor.shared
     @State private var showNewChat = false
     @State private var navigationPath = NavigationPath()
     @State private var scrollToMessageID: String? = nil

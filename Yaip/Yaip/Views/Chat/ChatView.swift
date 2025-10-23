@@ -12,8 +12,8 @@ struct ChatView: View {
     let conversation: Conversation
     let scrollToMessageID: String?
     @StateObject private var viewModel: ChatViewModel
-    @StateObject private var authManager = AuthManager.shared
-    @StateObject private var networkMonitor = NetworkMonitor.shared
+    @ObservedObject private var authManager = AuthManager.shared
+    @ObservedObject private var networkMonitor = NetworkMonitor.shared
     @FocusState private var isTextFieldFocused: Bool
     @State private var showingDetail = false
     @State private var otherUserStatus: UserStatus = .offline
