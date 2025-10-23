@@ -53,30 +53,24 @@ class AuthManager: ObservableObject {
                 let snapshot = try await db.collection(Constants.Collections.users).document(userID).getDocument()
                 
                 if !snapshot.exists {
-                    // User document doesn't exist - create it from Firebase Auth data
-                    print("⚠️ User document not found in Firestore, creating it...")
+                    // User document doesn't exist in Firestore but Auth token exists
+                    // This happens when:
+                    // 1. Database was reset but Keychain still has auth token
+                    // 2. User document was manually deleted
+                    // SOLUTION: Sign them out and force re-authentication
+                    print("❌ User document not found in Firestore for authenticated user")
+                    print("❌ This likely means database was reset. Signing out...")
                     
-                    if let authUser = Auth.auth().currentUser {
-                        let newUser = User(
-                            id: nil, // Let Firestore set the ID
-                            displayName: authUser.displayName ?? "User",
-                            email: authUser.email ?? "",
-                            profileImageURL: authUser.photoURL?.absoluteString,
-                            status: .online,
-                            lastSeen: Date(),
-                            fcmToken: nil,
-                            createdAt: Date()
-                        )
-                        
-                        // Save to Firestore
-                        try db.collection(Constants.Collections.users).document(authUser.uid).setData(from: newUser)
-                        
-                        await MainActor.run {
-                            self.user = newUser
-                            self.isAuthenticated = true
-                        }
-                        return
+                    // Sign out from Firebase Auth
+                    try? Auth.auth().signOut()
+                    
+                    await MainActor.run {
+                        self.user = nil
+                        self.isAuthenticated = false
                     }
+                    
+                    print("✅ Signed out orphaned user. Please sign in again.")
+                    return
                 }
                 
                 // Use snapshot.data(as:) which properly handles @DocumentID
