@@ -180,9 +180,15 @@ struct ChatView: View {
                     Text(displayName)
                         .font(.headline)
                     
-                    // Show online status for 1-on-1 chats
+                    // Show online status for 1-on-1 chats (only if we're online)
                     if conversation.type == .oneOnOne {
-                        OnlineStatusText(status: otherUserStatus, lastSeen: otherUserLastSeen)
+                        if networkMonitor.isConnected {
+                            OnlineStatusText(status: otherUserStatus, lastSeen: otherUserLastSeen)
+                        } else {
+                            Text("Status unavailable")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
                     } else {
                         Text("\(conversation.participants.count) participants")
                             .font(.caption)

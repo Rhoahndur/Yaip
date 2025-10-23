@@ -14,6 +14,7 @@ struct ConversationRow: View {
     @State private var otherUserStatus: UserStatus = .offline
     @State private var displayName: String = "Loading..."
     @State private var statusListener: ListenerRegistration?
+    @ObservedObject private var networkMonitor = NetworkMonitor.shared
     
     var body: some View {
         HStack(spacing: 16) {
@@ -45,8 +46,8 @@ struct ConversationRow: View {
                         .font(.title2)
                 }
                 
-                // Online status badge (only for 1-on-1 chats)
-                if conversation.type == .oneOnOne {
+                // Online status badge (only for 1-on-1 chats and when we're online)
+                if conversation.type == .oneOnOne && networkMonitor.isConnected {
                     OnlineStatusBadge(status: otherUserStatus, size: 16)
                         .overlay(
                             Circle()

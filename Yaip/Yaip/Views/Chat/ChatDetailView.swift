@@ -10,6 +10,7 @@ import SwiftUI
 struct ChatDetailView: View {
     let conversation: Conversation
     @ObservedObject private var authManager = AuthManager.shared
+    @ObservedObject private var networkMonitor = NetworkMonitor.shared
     @Environment(\.dismiss) private var dismiss
     @State private var participantUsers: [User] = []
     @State private var isLoadingParticipants = true
@@ -77,10 +78,12 @@ struct ChatDetailView: View {
                                 
                                 Spacer()
                                 
-                                // Online status indicator
-                                Circle()
-                                    .fill(user.status == .online ? Color.green : Color.gray)
-                                    .frame(width: 8, height: 8)
+                                // Online status indicator (only when we're online)
+                                if networkMonitor.isConnected {
+                                    Circle()
+                                        .fill(user.status == .online ? Color.green : Color.gray)
+                                        .frame(width: 8, height: 8)
+                                }
                             }
                         }
                     }
