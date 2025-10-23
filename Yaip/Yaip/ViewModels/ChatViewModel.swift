@@ -334,11 +334,15 @@ class ChatViewModel: ObservableObject {
         }
         
         print("🔄 Retrying message: \(messageID) (status: \(message.status))")
+        print("   Text: '\(message.text ?? "nil")'")
+        print("   MediaType: \(message.mediaType?.rawValue ?? "nil")")
+        print("   MediaURL: \(message.mediaURL ?? "nil")")
         
         // Update status to sending
         messages[index].status = .sending
         
-        var updatedMessage = message
+        // Use the latest version from messages array (not the passed parameter)
+        var updatedMessage = messages[index]
         
         // If message has mediaType but no mediaURL, try to upload image again
         if updatedMessage.mediaType == .image && updatedMessage.mediaURL == nil {
@@ -356,13 +360,21 @@ class ChatViewModel: ObservableObject {
                 }
             } else {
                 print("⚠️ No cached image found for message")
+                // If no cached image, we still need to try sending the message
+                // (maybe it was a text-only message that failed)
             }
         }
         
         // Try to send to Firestore
+        print("📤 Attempting to send to Firestore...")
+        print("   Message ID: \(messageID)")
+        print("   Text: '\(updatedMessage.text ?? "nil")'")
+        print("   MediaURL: '\(updatedMessage.mediaURL ?? "nil")'")
+        print("   MediaType: '\(updatedMessage.mediaType?.rawValue ?? "nil")'")
+        
         do {
             try await messageService.sendMessage(updatedMessage)
-            print("✅ Message sent on retry")
+            print("✅ Message sent to Firestore on retry")
             
             // Mark as synced
             try? localStorage.markMessageSynced(id: messageID)
