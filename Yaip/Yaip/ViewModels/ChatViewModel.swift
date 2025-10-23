@@ -93,10 +93,14 @@ class ChatViewModel: ObservableObject {
                 // LIFECYCLE-AWARE MERGE: Respect local vs network state ownership
                 var mergedMessages: [Message] = []
                 let firestoreIDs = Set(firestoreMessages.compactMap { $0.id })
-                let localByID = Dictionary(uniqueKeysWithValues: oldMessages.compactMap { msg in
-                    guard let id = msg.id else { return nil }
-                    return (id, msg)
-                })
+                
+                // Create lookup dictionary for local messages
+                var localByID: [String: Message] = [:]
+                for msg in oldMessages {
+                    if let id = msg.id {
+                        localByID[id] = msg
+                    }
+                }
                 
                 // Add Firestore messages (but respect local states)
                 for firestoreMsg in firestoreMessages {
