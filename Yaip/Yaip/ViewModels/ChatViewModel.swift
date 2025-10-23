@@ -101,10 +101,18 @@ class ChatViewModel: ObservableObject {
                 let pendingLocal = oldMessages.filter { localMsg in
                     guard let id = localMsg.id else { return false }
                     // Keep if not in Firestore and still pending/failed
-                    return !firestoreIDs.contains(id) && 
-                           (localMsg.status == .sending || localMsg.status == .failed)
+                    let isPending = !firestoreIDs.contains(id) && 
+                                   (localMsg.status == .sending || localMsg.status == .failed)
+                    
+                    if isPending {
+                        print("📌 Keeping pending message \(id): text='\(localMsg.text ?? "nil")', hasMedia=\(localMsg.mediaType != nil), status=\(localMsg.status)")
+                    }
+                    
+                    return isPending
                 }
                 mergedMessages.append(contentsOf: pendingLocal)
+                
+                print("🔀 Merge complete: Firestore=\(firestoreMessages.count), Pending=\(pendingLocal.count), Total=\(mergedMessages.count)")
                 
                 // Sort by timestamp
                 mergedMessages.sort { $0.timestamp < $1.timestamp }
@@ -279,9 +287,14 @@ class ChatViewModel: ObservableObject {
         
         // Send to Firestore
         print("📤 Sending message to Firestore...")
+        print("   Message ID: \(messageID)")
+        print("   Text: '\(newMessage.text ?? "nil")'")
+        print("   MediaURL: '\(newMessage.mediaURL ?? "nil")'")
+        print("   MediaType: '\(newMessage.mediaType?.rawValue ?? "nil")'")
+        
         do {
             try await messageService.sendMessage(newMessage)
-            print("✅ Message sent to Firestore")
+            print("✅ Message sent to Firestore successfully")
             
             // Mark as synced
             try? localStorage.markMessageSynced(id: messageID)
