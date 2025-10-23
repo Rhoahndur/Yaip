@@ -10,6 +10,7 @@ import SwiftUI
 struct MessageBubble: View {
     let message: Message
     let isFromCurrentUser: Bool
+    var onRetry: (() -> Void)? = nil
     
     var body: some View {
         HStack(alignment: .bottom, spacing: 8) {
@@ -74,6 +75,13 @@ struct MessageBubble: View {
                                     .font(.system(size: 11))
                                     .foregroundStyle(.blue)
                             }
+                            
+                            // Tap to retry indicator
+                            if message.status == .failed {
+                                Text("• Tap to retry")
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(.red)
+                            }
                         }
                     }
                 }
@@ -84,6 +92,12 @@ struct MessageBubble: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 3)
+        .contentShape(Rectangle()) // Make entire area tappable
+        .onTapGesture {
+            if message.status == .failed {
+                onRetry?()
+            }
+        }
     }
     
     @ViewBuilder

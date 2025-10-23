@@ -87,7 +87,12 @@ struct ChatView: View {
                                 } else {
                                     MessageBubble(
                                         message: message,
-                                        isFromCurrentUser: message.senderID == authManager.currentUserID
+                                        isFromCurrentUser: message.senderID == authManager.currentUserID,
+                                        onRetry: {
+                                            Task {
+                                                await viewModel.retryMessage(message)
+                                            }
+                                        }
                                     )
                                     .id(message.id)
                                     .background(
@@ -208,6 +213,22 @@ struct ChatView: View {
             if conversation.type == .oneOnOne {
                 Task {
                     await loadOtherUserStatus()
+                }
+            }
+            
+            // Retry any failed messages when view appears and we're online
+            if networkMonitor.isConnected {
+                Task {
+                    await viewModel.retryAllFailedMessages()
+                }
+            }
+        }
+        .onChange(of: networkMonitor.isConnected) { oldValue, newValue in
+            // Auto-retry when network comes back online
+            if !oldValue && newValue {
+                print("🌐 Network reconnected - retrying failed messages")
+                Task {
+                    await viewModel.retryAllFailedMessages()
                 }
             }
         }

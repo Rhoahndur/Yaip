@@ -182,32 +182,9 @@ class ChatViewModel: ObservableObject {
         }
         print("✅ Typing task dispatched, continuing with message creation...")
         
-        // Upload image if present
-        var mediaURL: String?
-        var mediaType: MediaType?
-        var imageUploadFailed = false
-        
-        if let image = image {
-            print("🖼️ Image present, starting upload...")
-            isUploadingImage = true
-            do {
-                mediaURL = try await storageService.uploadChatImage(image, conversationID: conversationID)
-                mediaType = .image
-                print("✅ Image upload complete, mediaURL: \(mediaURL ?? "nil")")
-            } catch {
-                print("❌ Error uploading image: \(error)")
-                print("❌ Error details: \(error.localizedDescription)")
-                imageUploadFailed = true
-                // Don't return - still show message as pending
-            }
-            isUploadingImage = false
-        } else {
-            print("ℹ️ No image to upload")
-        }
-        
         print("📦 Creating message object...")
         
-        // Create message
+        // Create message immediately (optimistic UI)
         let messageID = UUID().uuidString
         print("📦 Generated messageID: \(messageID)")
         var newMessage = Message(
@@ -215,10 +192,10 @@ class ChatViewModel: ObservableObject {
             conversationID: conversationID,
             senderID: currentUserID,
             text: text.isEmpty ? nil : text,
-            mediaURL: mediaURL,
-            mediaType: mediaType,
+            mediaURL: nil, // Will be set after upload
+            mediaType: image != nil ? .image : nil,
             timestamp: Date(),
-            status: imageUploadFailed ? .failed : .sending,
+            status: .sending,
             readBy: [currentUserID]
         )
         newMessage.id = messageID
@@ -233,15 +210,43 @@ class ChatViewModel: ObservableObject {
         
         // Save locally first (so it persists across app restarts)
         try? localStorage.saveMessage(newMessage)
-        print("✅ Saved message locally")
         
-        // If image upload failed, don't try to send to Firestore yet
-        if imageUploadFailed {
-            print("⚠️ Image upload failed - message saved locally for later retry")
-            return
+        // Save image locally if present (for retry later)
+        if let image = image {
+            localStorage.saveImage(image, forMessageID: messageID)
+            print("✅ Saved message and image locally")
+        } else {
+            print("✅ Saved message locally")
+        }
+        
+        // Upload image if present (async, non-blocking)
+        var mediaURL: String?
+        if let image = image {
+            print("🖼️ Uploading image in background...")
+            do {
+                mediaURL = try await storageService.uploadChatImage(image, conversationID: conversationID)
+                print("✅ Image uploaded: \(mediaURL ?? "nil")")
+                
+                // Update message with mediaURL
+                if let index = messages.firstIndex(where: { $0.id == messageID }) {
+                    messages[index].mediaURL = mediaURL
+                    newMessage.mediaURL = mediaURL
+                    try? localStorage.saveMessage(messages[index])
+                    print("✅ Updated message with mediaURL")
+                }
+            } catch {
+                print("❌ Image upload failed: \(error.localizedDescription)")
+                // Mark as failed but continue (will retry later)
+                if let index = messages.firstIndex(where: { $0.id == messageID }) {
+                    messages[index].status = .failed
+                    print("⚠️ Message marked as failed (image upload error)")
+                }
+                return // Don't try to send to Firestore without image URL
+            }
         }
         
         // Send to Firestore
+        print("📤 Sending message to Firestore...")
         do {
             try await messageService.sendMessage(newMessage)
             print("✅ Message sent to Firestore")
@@ -276,6 +281,83 @@ class ChatViewModel: ObservableObject {
                 print("⚠️ Updated message status to .failed (will retry when online)")
             }
             // Don't show error to user - message will auto-retry when connection restored
+        }
+    }
+    
+    /// Retry sending a failed message
+    func retryMessage(_ message: Message) async {
+        guard let messageID = message.id,
+              let index = messages.firstIndex(where: { $0.id == messageID }),
+              message.status == .failed else {
+            print("❌ Cannot retry message: invalid state")
+            return
+        }
+        
+        print("🔄 Retrying message: \(messageID)")
+        
+        // Update status to sending
+        messages[index].status = .sending
+        
+        var updatedMessage = message
+        
+        // If message has mediaType but no mediaURL, try to upload image again
+        if updatedMessage.mediaType == .image && updatedMessage.mediaURL == nil {
+            if let image = localStorage.loadImage(forMessageID: messageID) {
+                print("🖼️ Found cached image, uploading...")
+                do {
+                    let mediaURL = try await storageService.uploadChatImage(image, conversationID: conversation.id!)
+                    updatedMessage.mediaURL = mediaURL
+                    messages[index].mediaURL = mediaURL
+                    print("✅ Image uploaded on retry: \(mediaURL)")
+                } catch {
+                    print("❌ Image upload failed on retry: \(error.localizedDescription)")
+                    messages[index].status = .failed
+                    return
+                }
+            } else {
+                print("⚠️ No cached image found for message")
+            }
+        }
+        
+        // Try to send to Firestore
+        do {
+            try await messageService.sendMessage(updatedMessage)
+            print("✅ Message sent on retry")
+            
+            // Mark as synced
+            try? localStorage.markMessageSynced(id: messageID)
+            
+            // Update status to sent
+            messages[index].status = .sent
+            
+            // Update conversation's last message
+            if let conversationID = conversation.id,
+               let currentUserID = authManager.currentUserID {
+                let lastMessageText = updatedMessage.text ?? "📷 Photo"
+                let lastMessage = LastMessage(
+                    text: lastMessageText,
+                    senderID: currentUserID,
+                    timestamp: updatedMessage.timestamp
+                )
+                try await conversationService.updateLastMessage(
+                    conversationID: conversationID,
+                    lastMessage: lastMessage
+                )
+            }
+            
+        } catch {
+            print("❌ Retry failed: \(error.localizedDescription)")
+            messages[index].status = .failed
+        }
+    }
+    
+    /// Retry all failed messages
+    func retryAllFailedMessages() async {
+        print("🔄 Retrying all failed messages...")
+        let failedMessages = messages.filter { $0.status == .failed }
+        
+        for message in failedMessages {
+            await retryMessage(message)
         }
     }
     

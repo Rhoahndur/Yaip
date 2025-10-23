@@ -7,6 +7,7 @@
 
 import Foundation
 import SwiftData
+import UIKit
 
 /// Manager for local persistence using SwiftData
 @MainActor
@@ -117,6 +118,57 @@ class LocalStorageManager {
         }
     }
     
+    // MARK: - Image Caching
+    
+    /// Save image locally for later upload
+    func saveImage(_ image: UIImage, forMessageID messageID: String) {
+        guard let imageData = image.jpegData(compressionQuality: 0.8) else {
+            print("❌ Failed to convert image to data")
+            return
+        }
+        
+        let fileURL = getImageCacheURL(forMessageID: messageID)
+        
+        do {
+            try imageData.write(to: fileURL)
+            print("✅ Cached image for message: \(messageID)")
+        } catch {
+            print("❌ Failed to cache image: \(error.localizedDescription)")
+        }
+    }
+    
+    /// Load cached image for message
+    func loadImage(forMessageID messageID: String) -> UIImage? {
+        let fileURL = getImageCacheURL(forMessageID: messageID)
+        
+        guard FileManager.default.fileExists(atPath: fileURL.path),
+              let imageData = try? Data(contentsOf: fileURL),
+              let image = UIImage(data: imageData) else {
+            return nil
+        }
+        
+        return image
+    }
+    
+    /// Delete cached image
+    func deleteImage(forMessageID messageID: String) {
+        let fileURL = getImageCacheURL(forMessageID: messageID)
+        try? FileManager.default.removeItem(at: fileURL)
+    }
+    
+    /// Get file URL for cached image
+    private func getImageCacheURL(forMessageID messageID: String) -> URL {
+        let cacheDir = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
+        let imageDir = cacheDir.appendingPathComponent("PendingImages", isDirectory: true)
+        
+        // Create directory if it doesn't exist
+        if !FileManager.default.fileExists(atPath: imageDir.path) {
+            try? FileManager.default.createDirectory(at: imageDir, withIntermediateDirectories: true)
+        }
+        
+        return imageDir.appendingPathComponent("\(messageID).jpg")
+    }
+    
     // MARK: - Cleanup
     
     /// Clear all local data
@@ -124,6 +176,11 @@ class LocalStorageManager {
         try modelContext.delete(model: LocalMessage.self)
         try modelContext.delete(model: LocalConversation.self)
         try modelContext.save()
+        
+        // Clear image cache
+        let cacheDir = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
+        let imageDir = cacheDir.appendingPathComponent("PendingImages", isDirectory: true)
+        try? FileManager.default.removeItem(at: imageDir)
     }
 }
 
