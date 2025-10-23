@@ -174,8 +174,13 @@ class ChatViewModel: ObservableObject {
         print("✅ Cleared input fields")
         print("   New messageText: '\(messageText)'")
         
-        // Stop typing indicator
-        await updateTypingStatus(false)
+        // Stop typing indicator (fire-and-forget - don't block on this)
+        print("🔄 Stopping typing indicator (non-blocking)...")
+        Task {
+            await updateTypingStatus(false)
+            print("✅ Typing indicator stopped")
+        }
+        print("✅ Typing task dispatched, continuing with message creation...")
         
         // Upload image if present
         var mediaURL: String?
@@ -200,8 +205,11 @@ class ChatViewModel: ObservableObject {
             print("ℹ️ No image to upload")
         }
         
+        print("📦 Creating message object...")
+        
         // Create message
         let messageID = UUID().uuidString
+        print("📦 Generated messageID: \(messageID)")
         var newMessage = Message(
             id: nil,
             conversationID: conversationID,
