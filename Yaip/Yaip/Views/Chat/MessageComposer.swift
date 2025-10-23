@@ -12,6 +12,10 @@ struct MessageComposer: View {
     @Binding var selectedImage: UIImage?
     let onSend: () -> Void
     
+    @State private var showImagePreview = false
+    @State private var imageCaption = ""
+    @State private var pendingImage: UIImage?
+    
     init(text: Binding<String>, selectedImage: Binding<UIImage?>, onSend: @escaping () -> Void) {
         self._text = text
         self._selectedImage = selectedImage
@@ -21,27 +25,6 @@ struct MessageComposer: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            // Image preview
-            if let image = selectedImage {
-                HStack {
-                    Image(uiImage: image)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(height: 100)
-                        .cornerRadius(8)
-                    
-                    Spacer()
-                    
-                    Button {
-                        selectedImage = nil
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                .padding(.horizontal, 12)
-                .padding(.top, 8)
-            }
             
             HStack(spacing: 12) {
                 // Image picker button
@@ -85,6 +68,40 @@ struct MessageComposer: View {
             .padding(.vertical, 8)
         }
         .background(Color(uiColor: .systemBackground))
+        .onChange(of: selectedImage) { oldValue, newValue in
+            // When image is selected, show preview modal
+            if let image = newValue {
+                pendingImage = image
+                imageCaption = text // Pre-fill with any text already typed
+                showImagePreview = true
+            }
+        }
+        .sheet(isPresented: $showImagePreview) {
+            if let image = pendingImage {
+                ImagePreviewModal(
+                    image: image,
+                    caption: $imageCaption,
+                    onSend: {
+                        // Update text with caption and keep image
+                        text = imageCaption
+                        selectedImage = pendingImage
+                        // Trigger send
+                        onSend()
+                        // Reset
+                        imageCaption = ""
+                        pendingImage = nil
+                    }
+                )
+            }
+        }
+        .onChange(of: showImagePreview) { oldValue, newValue in
+            // If modal was dismissed without sending, clear the selected image
+            if !newValue && selectedImage != nil && pendingImage != nil {
+                selectedImage = nil
+                pendingImage = nil
+                imageCaption = ""
+            }
+        }
     }
     
     private var canSend: Bool {

@@ -84,23 +84,47 @@ class ChatViewModel: ObservableObject {
         }
         
         // Listen to messages
-        messageListener = messageService.listenToMessages(conversationID: conversationID) { [weak self] messages in
+        messageListener = messageService.listenToMessages(conversationID: conversationID) { [weak self] firestoreMessages in
             Task { @MainActor in
                 guard let self = self else { return }
                 
                 let oldMessages = self.messages
-                self.messages = messages
+                
+                // Smart merge: Keep Firestore messages + pending local messages
+                var mergedMessages: [Message] = []
+                let firestoreIDs = Set(firestoreMessages.compactMap { $0.id })
+                
+                // Add all Firestore messages (source of truth for synced messages)
+                mergedMessages.append(contentsOf: firestoreMessages)
+                
+                // Keep local pending/failed messages that haven't synced yet
+                let pendingLocal = oldMessages.filter { localMsg in
+                    guard let id = localMsg.id else { return false }
+                    // Keep if not in Firestore and still pending/failed
+                    return !firestoreIDs.contains(id) && 
+                           (localMsg.status == .sending || localMsg.status == .failed)
+                }
+                mergedMessages.append(contentsOf: pendingLocal)
+                
+                // Sort by timestamp
+                mergedMessages.sort { $0.timestamp < $1.timestamp }
+                
+                self.messages = mergedMessages
                 self.isLoading = false
                 
-                // Save to local storage
-                for message in messages {
+                // Save Firestore messages to local storage
+                for message in firestoreMessages {
                     try? self.localStorage.saveMessage(message)
+                    // Delete cached image once uploaded
+                    if message.mediaURL != nil, let id = message.id {
+                        self.localStorage.deleteImage(forMessageID: id)
+                    }
                 }
                 
                 // Auto-mark new unread messages as read (if we're viewing the chat)
                 guard let userID = self.authManager.currentUserID else { return }
                 
-                let newMessages = messages.filter { newMsg in
+                let newMessages = firestoreMessages.filter { newMsg in
                     !oldMessages.contains(where: { $0.id == newMsg.id })
                 }
                 
