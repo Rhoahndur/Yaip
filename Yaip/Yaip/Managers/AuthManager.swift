@@ -175,7 +175,7 @@ class AuthManager: ObservableObject {
         print("🚪 Sign out initiated")
         
         // Stop message listener immediately (doesn't require network)
-        await MessageListenerService.shared.stopListening()
+        MessageListenerService.shared.stopListening()
         print("✅ Stopped message listeners")
         
         // Try to set user offline, but don't wait if network is down

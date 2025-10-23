@@ -37,7 +37,7 @@ class PendingChatViewModel: ObservableObject {
         if pendingConversation.type == .oneOnOne {
             // Try to get other user's name
             if let currentUserID = authManager.currentUserID,
-               let otherUserID = pendingConversation.participants.first(where: { $0 != currentUserID }) {
+               let _ = pendingConversation.participants.first(where: { $0 != currentUserID }) {
                 // In a real app, we'd fetch this. For now, just show "New Chat"
                 return "New Chat"
             }

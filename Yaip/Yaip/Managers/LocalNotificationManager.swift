@@ -119,8 +119,6 @@ extension LocalNotificationManager: UNUserNotificationCenterDelegate {
         willPresent notification: UNNotification,
         withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
     ) {
-        let userInfo = notification.request.content.userInfo
-        
         print("🔔 Received local notification in foreground:")
         print("   Title: \(notification.request.content.title)")
         print("   Body: \(notification.request.content.body)")
