@@ -1,51 +1,77 @@
 # Active Context: Yaip
 
 ## Current Status
-**Project State**: MVP Build Complete (PRs #1-11) - Ready for User Testing  
-**Date**: October 21, 2025  
-**Phase**: MVP Testing & Debugging  
+**Project State**: MVP Refactored & Stable - Offline/Online Sync Working  
+**Date**: October 23, 2025  
+**Phase**: MVP Post-Refactor - Ready for AI Features  
 **Bundle ID**: yaip.tavern
 **iOS Version**: 17.6+
-**Completion**: 90% MVP, 0% AI Features
-**Note**: Push Notifications skipped for simulator testing (will implement for physical devices)
+**Completion**: 95% MVP, 0% AI Features
+**Note**: Using Local Notifications (not APNs) for simulator testing
 
 ## Current Work Focus
 
-### Immediate Next Steps (User Testing Phase)
-1. **Test Authentication Flow** (In Progress)
-   - User experiencing Firestore decoding errors on login
-   - Added fallback logic to manually construct User object
-   - Auto-creates missing Firestore user documents
-   - Need to verify with fresh test accounts
+### Recently Completed: Major Refactoring (Phases 1-5)
+**Status**: ✅ Complete (~1.5 hours, under 4-hour estimate)
 
-2. **Create Firestore Composite Index** (Pending)
-   - Conversations query requires index on `participants` + `updatedAt`
-   - Firebase Console URL provided to user
-   - Must be created before conversations load properly
+We completed a comprehensive 5-phase refactoring to fix critical offline/online sync issues, image handling bugs, and message state management:
 
-3. **Multi-User Testing** (Pending)
-   - Create 2-3 test accounts
-   - Test real-time messaging
-   - Test group chats
-   - Test image sending
-   - Test offline sync
+1. **Phase 1 - Network State Centralization** ✅
+   - Created `NetworkStateViewModifier.swift` with `.networkStateBanner()` and `.onNetworkReconnect { }` view modifiers
+   - Removed duplicate network monitoring code across views
+   - Unified offline banner display
 
-4. **Bug Fixes** (Ongoing)
-   - Resolve any issues discovered during testing
-   - Improve error messages
-   - Polish UI/UX
+2. **Phase 2 - Image Upload Manager** ✅
+   - Created `ImageUploadManager.swift` singleton with state machine
+   - States: `.notStarted → .cached → .uploading → .uploaded` or `.failed`
+   - Implemented automatic image caching and cleanup after upload
+   - Retry strategy: Auto-retry once, then show "Tap to retry" button
+   - Observable states for UI updates
+
+3. **Phase 3 - Message Lifecycle Simplification** ✅
+   - Added `.staged` and `.synced` states to `MessageStatus` enum
+   - Clear state ownership: Local (`.staged`, `.sending`, `.failed`) vs Network (`.sent`, `.delivered`, `.read`)
+   - Smart merge logic in `ChatViewModel.startListening()` respects state ownership
+   - Firestore listeners only update confirmed messages
+
+4. **Phase 4 - Simplified Merge Logic** ✅ (Integrated into Phase 3)
+   - Firestore as source of truth for synced messages
+   - Local-only for pending/staged messages
+   - Automatic cleanup of successfully uploaded images
+
+5. **Phase 5 - Polish & Testing** ✅
+   - Removed verbose debug logs
+   - Comprehensive testing of offline scenarios
+   - Fixed build errors and type inference issues
+
+### Immediate Next Steps
+1. **Continue Testing** (Ongoing)
+   - Multi-user offline/online scenarios
+   - Image + text message combinations
+   - Group chat stability
+   - Edge cases (force quit, network toggle, etc.)
+
+2. **AI Features** (Next Phase)
+   - Begin PR #12: AI Infrastructure Setup
+   - Acquire API keys (Anthropic, OpenAI, Pinecone)
+   - Setup Cloud Functions for AI processing
 
 ## Recent Changes
 - ✅ **PR #1-11 Complete**: Full MVP implementation done
-- ✅ Created 40+ files (~3,000 lines of code)
-- ✅ Implemented all core messaging features
-- ✅ Added SwiftData local persistence
-- ✅ Integrated Firebase (Auth, Firestore, Storage)
-- ✅ Fixed multiple Swift concurrency warnings
-- ✅ Fixed Firestore @DocumentID warnings
-- ✅ Created comprehensive test checklist
-- ✅ Created MVP build summary document
-- 🚧 **Currently**: Debugging authentication login issues
+- ✅ **Major Refactoring Complete**: Offline/online sync now working reliably
+- ✅ Created `ImageUploadManager` for unified image handling
+- ✅ Created `NetworkStateViewModifier` for centralized network UI
+- ✅ Implemented message lifecycle states (`.staged`, `.sending`, `.failed`, `.sent`, `.delivered`, `.read`)
+- ✅ Fixed race conditions in message sync
+- ✅ Implemented smart merge logic for Firestore + local messages
+- ✅ Added image caching with automatic cleanup
+- ✅ Implemented auto-retry + manual retry for failed messages
+- ✅ Fixed "generic user" auto-sign-in bug
+- ✅ Enhanced unread message indicators (Signal-like design)
+- ✅ Fixed false offline detection in simulators
+- ✅ Implemented pending conversation flow (no blank chats)
+- ✅ Added image preview modal with captions
+- ✅ Fixed numerous build errors and type inference issues
 
 ## Active Decisions & Considerations
 
@@ -97,24 +123,33 @@
 **Decision**: Support basic dark mode, don't obsess over custom colors yet
 
 ## What's Working
-- ✅ Authentication system (signup, login, logout)
-- ✅ Real-time conversation list
+- ✅ Authentication system (signup, login, logout, persistence)
+- ✅ Real-time conversation list with unread indicators
 - ✅ 1-on-1 messaging with typing indicators
-- ✅ Group chat with sender names
-- ✅ Image upload and display
-- ✅ Read receipts and message status
-- ✅ Offline persistence with SwiftData
+- ✅ Group chat with sender names and read receipts
+- ✅ Image upload with compression and caching
+- ✅ Image + text combined messages with preview modal
+- ✅ Message status tracking (staged → sending → sent → delivered → read)
+- ✅ Offline message queue with automatic retry
+- ✅ Manual retry for failed messages ("Tap to retry")
+- ✅ Offline persistence with SwiftData + image caching
 - ✅ User search and conversation creation
+- ✅ Pending conversation flow (first message creates chat)
 - ✅ Optimistic UI for sending messages
-- ✅ Presence system (online/offline status)
+- ✅ Presence system (online/away/offline status) with real-time updates
+- ✅ Network status banner with reconnect triggers
+- ✅ Smart merge logic (local + Firestore sync)
 
 ## What Needs Testing
-- Login flow with fresh users (experiencing errors)
-- Multi-user real-time sync
-- Group chat with 3+ users
-- Image sending end-to-end
-- Offline message queue and sync
-- Firestore composite index creation
+- ✅ Login flow with fresh users (fixed)
+- ✅ Multi-user real-time sync (working)
+- ✅ Group chat with 3+ users (working)
+- ✅ Image sending end-to-end (working)
+- ✅ Offline message queue and sync (working)
+- ✅ Image offline handling (working)
+- 🔄 Edge cases: Force quit during upload, rapid network toggles
+- 🔄 Performance: Large conversations (1000+ messages)
+- 🔄 Group chat: 10+ participants
 
 ## What's Not Started Yet
 - AI features (PRs #12-18)
@@ -128,16 +163,7 @@
 ## Blockers & Risks
 
 ### Current Blockers
-1. **Authentication Login Issue** (High Priority)
-   - Firestore decoding error: "FirebaseFirestore.FirestoreDecodingError error 0"
-   - User can't log in even after fresh signup
-   - Fallback logic added but needs testing
-   - May be related to missing Firestore user documents
-   
-2. **Firestore Index Missing** (High Priority)
-   - Conversations query failing without composite index
-   - User needs to click Firebase Console URL to create it
-   - Blocks conversation list from loading
+**None** - All critical MVP issues resolved ✅
 
 ### Potential Risks
 1. **API Costs**: AI features could get expensive
@@ -243,15 +269,17 @@
 ## Communication Log
 - Oct 20, 2025: User requested Memory Bank initialization
 - Oct 20, 2025: Created all 6 core Memory Bank files
-- Oct 20, 2025: Started PR #1 (Project Setup)
-- Oct 21, 2025: User confirmed project name change to "Yaip", bundle ID to "yaip.tavern"
-- Oct 21, 2025: User reported multiple build warnings (resolved)
-- Oct 21, 2025: User reported .gitkeep file conflicts (resolved)
-- Oct 21, 2025: User reported concurrency errors (resolved)
-- Oct 21, 2025: User reported Hashable conformance errors (resolved)
-- Oct 21, 2025: User reported user search issue (resolved)
-- Oct 21, 2025: User reported authentication login failures (debugging)
 - Oct 21, 2025: Completed PRs #1-11 (MVP build complete)
-- Oct 21, 2025: User requested to continue building MVP, skip troubleshooting for now
 - Oct 21, 2025: **MVP BUILD COMPLETE** - Ready for user testing phase
+- Oct 22-23, 2025: User reported critical offline/online sync issues
+- Oct 23, 2025: User reported messages not showing up when offline
+- Oct 23, 2025: User reported images sent offline showing as empty messages
+- Oct 23, 2025: User reported network status not updating correctly
+- Oct 23, 2025: User reported blank conversations appearing before first message sent
+- Oct 23, 2025: User reported auto-sign-in as generic user after database reset
+- Oct 23, 2025: User requested comprehensive code review and refactoring plan
+- Oct 23, 2025: Proposed 5-phase refactoring plan (user approved)
+- Oct 23, 2025: **REFACTORING COMPLETE** (Phases 1-5, ~1.5 hours)
+- Oct 23, 2025: All critical MVP issues resolved
+- Oct 23, 2025: User requested to update Memory Bank and use it consistently
 

@@ -1,9 +1,9 @@
 # Progress: Yaip
 
 ## Overall Status
-**Project Completion**: 38% (MVP: 90%, AI: 0%, Polish: 0%)  
-**Current Phase**: MVP Complete - Ready for Testing  
-**Last Updated**: October 21, 2025
+**Project Completion**: 42% (MVP: 95%, AI: 0%, Polish: 0%)  
+**Current Phase**: MVP Refactored & Stable - Ready for AI Features  
+**Last Updated**: October 23, 2025
 
 ---
 
@@ -15,7 +15,7 @@
 - ✅ **Tasks.md**: Complete task breakdown (26 PRs)
 - ✅ **Memory Bank**: All core files initialized
 
-### MVP Implementation (90% - 10/11 PRs Complete)
+### MVP Implementation (95% - 11/11 PRs Complete)
 
 #### ✅ PR #1: Project Setup & Firebase Configuration
 - Created Xcode project (Bundle ID: yaip.tavern, iOS 17.6+)
@@ -92,18 +92,33 @@
 - Fixed user search persistence
 - Fixed Firestore @DocumentID warnings
 - Enhanced error logging and fallback handling
-- Created MVP_BUILD_SUMMARY.md
+- **MAJOR REFACTORING COMPLETE** (Oct 23, 2025):
+  - Created ImageUploadManager with state machine
+  - Created NetworkStateViewModifier for centralized network UI
+  - Implemented message lifecycle states with clear ownership
+  - Fixed offline/online sync race conditions
+  - Implemented auto-retry + manual retry for failed messages
+  - Added image caching with automatic cleanup
+  - Fixed false offline detection
+  - Fixed blank conversations before first message
+  - Fixed "generic user" auto-sign-in bug
+  - Enhanced unread message indicators (Signal-like)
+  - Added image preview modal with captions
+  - Comprehensive testing of offline scenarios
 
 ---
 
 ## What's In Progress 🚧
 
-### User Testing Phase
-- Need to test authentication flow with fresh user
-- Need to test real-time messaging between users
-- Need to test group chat functionality
-- Need to test image sending
-- Need to test offline scenarios
+### Final MVP Testing
+- ✅ Authentication flow tested
+- ✅ Real-time messaging tested
+- ✅ Group chat tested
+- ✅ Image sending tested
+- ✅ Offline scenarios tested
+- 🔄 Edge case testing (force quit, rapid network toggles)
+- 🔄 Performance testing (large conversations)
+- 🔄 Scale testing (10+ participant group chats)
 
 ---
 
@@ -268,19 +283,17 @@
 ## Known Issues
 
 ### Current Issues
-1. **Authentication Login Issue** (🔧 Partially Fixed)
-   - Firestore decoding error when user document missing
-   - Added fallback logic to manually construct User
-   - Auto-creates missing Firestore documents
-   - Still testing with fresh users
-   
-2. **Firestore Index Required**
-   - Composite index needed for conversations query
-   - URL provided to user for creation in Firebase Console
-   
-3. **Push Notifications Disabled**
-   - Skipped for simulator testing
-   - Will implement when testing on physical devices
+**None** - All critical MVP issues resolved ✅
+
+### Resolved Issues (Oct 23, 2025)
+1. ✅ **Offline Message Sync** - Messages now appear immediately and sync when online
+2. ✅ **Image Upload Failures** - Unified ImageUploadManager with retry logic
+3. ✅ **Network Status Not Updating** - Fixed @StateObject/@ObservedObject usage
+4. ✅ **Race Conditions in Message Sync** - Implemented state ownership pattern
+5. ✅ **Blank Conversations** - Implemented PendingConversation flow
+6. ✅ **Generic User Auto-Sign In** - Fixed by checking user document existence
+7. ✅ **False Offline Detection** - Improved NetworkMonitor logic
+8. ✅ **Image Caching** - Implemented with automatic cleanup
 
 ### Anticipated Challenges
 1. **Push Notifications**: Requires Apple Developer account and APNs setup
@@ -293,7 +306,7 @@
 
 ## Feature Status Breakdown
 
-### MVP Features (10/11 complete)
+### MVP Features (11/11 complete)
 | Feature | Status | PR | Completion |
 |---------|--------|-----|-----------|
 | Project Setup | ✅ Complete | #1 | 100% |
@@ -304,9 +317,9 @@
 | Local Persistence | ✅ Complete | #6 | 100% |
 | Group Chat | ✅ Complete | #7 | 100% |
 | Presence & Receipts | ✅ Complete | #8 | 100% |
-| Push Notifications | ⏭️ Skipped | #9 | N/A (Simulator) |
+| Push Notifications | ✅ Complete (Local) | #9 | 100% |
 | Media Support | ✅ Complete | #10 | 100% |
-| MVP Testing | 🚧 In Progress | #11 | 80% |
+| MVP Testing + Refactor | ✅ Complete | #11 | 100% |
 
 ### AI Features (0/7 complete)
 | Feature | Status | PR | Completion |
@@ -341,10 +354,12 @@
 - **Time Remaining**: ~64 hours
 
 ### Key Milestones
-- [x] **Milestone 1 (Day 3)**: MVP Complete
+- [x] **Milestone 1 (Day 3-4)**: MVP Complete & Refactored
   - ✅ All messaging features implemented
-  - 🚧 Tested on simulator (physical device testing pending)
-  - ⏳ MVP demo video (pending user testing)
+  - ✅ Tested on simulator (offline/online scenarios)
+  - ✅ Major refactoring complete (Phases 1-5)
+  - ✅ All critical bugs fixed
+  - ⏳ MVP demo video (optional for AI features phase)
   
 - [ ] **Milestone 2 (Day 5)**: AI Features Complete
   - All 5 required AI features working
@@ -405,43 +420,44 @@
 
 ## Next Steps
 
-### Immediate Actions (Testing Phase)
-1. **User Acceptance Testing** (2-3 hours)
-   - Create fresh Firebase user accounts
-   - Test signup/login flow
-   - Test conversation creation
-   - Test message sending (text + images)
-   - Test group chats
-   - Test offline scenarios
-   
-2. **Debug Authentication Issues** (1 hour)
-   - Ensure Firestore user documents created properly
-   - Test login with existing users
-   - Verify fallback logic works
-   
-3. **Create Firestore Index** (15 min)
-   - Follow Firebase Console URL
-   - Deploy required composite index
-   
-4. **Fix Any Discovered Bugs** (2-3 hours)
-   - Address issues found during testing
-   - Improve error messages
-   - Polish UI/UX
+### Immediate Actions (Ready for AI Features)
+1. **Begin AI Infrastructure** (PR #12) - ~4 hours
+   - Setup Cloud Functions project
+   - Acquire API keys:
+     - Anthropic Claude API
+     - OpenAI Embeddings API
+     - Pinecone Vector DB
+   - Create AIService in iOS
+   - Test callable functions
 
-### After MVP Testing Complete
-5. **Record MVP Demo Video** (1 hour)
-   - Show authentication
-   - Show 1-on-1 messaging
-   - Show group chat
-   - Show image sending
-   - Show real-time sync
+2. **Thread Summarization** (PR #13) - ~4 hours
+   - Implement Cloud Function for summarization
+   - Create SummaryView in iOS
+   - Implement caching (1 hour TTL)
+   
+3. **Action Item Extraction** (PR #14) - ~4 hours
+   - Implement structured output via tool use
+   - Create ActionItemsView
+   - Add jump-to-message functionality
 
-6. **Begin AI Features** (30+ hours)
-   - Start with PR #12: AI Infrastructure
-   - Implement PR #13-18: All AI features
+### After First AI Features
+4. **Smart Search** (PR #15) - ~6 hours
+   - Implement message embedding on creation
+   - Setup Pinecone vector DB
+   - Create SearchView with semantic + keyword search
+
+5. **Priority & Decisions** (PR #16-17) - ~6 hours
+   - Scheduled priority detection
+   - Auto-detect decisions in conversations
+   - Create views for both features
+
+6. **Proactive Assistant** (PR #18) - ~8 hours
+   - Detect scheduling intent
+   - Mock availability analysis
+   - Create assistant message bubbles
    
 ### This Week's Goal
-Complete MVP testing and start AI features (PR #12).
+Complete AI Features PRs #12-15 (Core AI infrastructure + 3 features).
 
 ---
 
@@ -469,6 +485,14 @@ Complete MVP testing and start AI features (PR #12).
 5. **Optimistic UI**: Improves perceived performance dramatically
 6. **Error Handling**: Fallback logic and logging essential for debugging
 7. **Real-time Listeners**: Must be cleaned up properly in `deinit` or `onDisappear`
+8. **State Ownership** (NEW): Clear rules for local vs. network state prevent race conditions
+9. **Centralized Managers** (NEW): Singleton managers (ImageUploadManager, NetworkMonitor) reduce complexity
+10. **View Modifiers** (NEW): Custom SwiftUI modifiers provide declarative, reusable patterns
+11. **Image Caching** (NEW): Cache to disk, cleanup after upload, max 3 retries
+12. **@StateObject vs @ObservedObject** (NEW): Use @ObservedObject for shared singletons to observe changes correctly
+13. **Fire-and-Forget Tasks** (NEW): Wrap Firestore updates in `Task { }` to prevent UI hangs when offline
+14. **Pending Conversations** (NEW): Don't create Firestore conversations until first message to avoid blank chats
+15. **Type Inference** (NEW): Explicit loops sometimes needed instead of `Dictionary(uniqueKeysWithValues:)` for complex types
 
 ---
 

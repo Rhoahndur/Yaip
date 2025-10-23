@@ -79,10 +79,11 @@ struct ChatView: View {
 
 **Managers**:
 - `AuthManager`: Current user state, auth operations
-- `PresenceManager`: User online/offline status
-- `NotificationManager`: Push notification handling
-- `MediaManager`: Image/video upload
-- `LocalStorageManager`: SwiftData operations
+- `PresenceService`: User online/offline status
+- `LocalNotificationManager`: Local notification handling (in-app + system)
+- `ImageUploadManager`: Unified image lifecycle management (NEW)
+- `LocalStorageManager`: SwiftData operations + image caching
+- `NetworkMonitor`: Network connectivity state (NEW)
 
 **Pattern**:
 ```swift
@@ -94,7 +95,45 @@ class AuthManager: ObservableObject {
 }
 ```
 
-#### 4. Repository Pattern (Local + Remote)
+#### 4. Image Upload State Machine Pattern (NEW)
+**Why**: Unified image handling with clear states and retry logic
+
+**ImageUploadManager** manages the full lifecycle:
+```swift
+enum ImageState {
+    case notStarted
+    case cached(UIImage)           // Saved to disk, ready to upload
+    case uploading(progress: Double) // Currently uploading
+    case uploaded(url: String)      // Successfully uploaded
+    case failed(error: String, retryCount: Int) // Failed, can retry
+}
+
+class ImageUploadManager: ObservableObject {
+    static let shared = ImageUploadManager()
+    @Published private var imageStates: [String: ImageState] = [:]
+    
+    func cacheImage(_ image: UIImage, for messageID: String)
+    func uploadImage(for messageID: String, conversationID: String) async -> String?
+    func retryUpload(for messageID: String, conversationID: String) async -> String?
+    func getCachedImage(for messageID: String) -> UIImage?
+    func cleanup(for messageID: String)
+}
+```
+
+**Flow**:
+1. User selects image → `cacheImage()` → saved to disk
+2. Online: `uploadImage()` → `.uploading` → `.uploaded` (cleanup) or `.failed`
+3. Offline: stays `.cached`, retries automatically on reconnect
+4. Manual retry: user taps "Tap to retry" → `retryUpload()`
+
+**Benefits**:
+- Single source of truth for image state
+- Observable states for UI updates
+- Automatic cleanup after upload
+- Max 3 retry attempts
+- Survives app restarts (cached to disk)
+
+#### 5. Repository Pattern (Local + Remote)
 **Why**: Offline-first architecture with sync
 
 **Pattern**:
@@ -112,6 +151,159 @@ class MessageService {
     }
 }
 ```
+
+#### 6. Message Lifecycle State Ownership Pattern (NEW)
+**Why**: Clear rules for who owns message state at each stage
+
+**State Ownership**:
+- **Local States** (Device owns):
+  - `.staged`: Created, saved locally, ready to send
+  - `.sending`: Currently uploading/sending
+  - `.failed`: Send failed, needs retry
+
+- **Network States** (Firestore owns):
+  - `.sent`: Successfully saved to Firestore
+  - `.delivered`: Confirmed by recipient's listener
+  - `.read`: Recipient opened chat
+
+**MessageStatus Enum**:
+```swift
+enum MessageStatus: String, Codable {
+    case staged, sending, failed  // Local states
+    case sent, delivered, read     // Network states
+    
+    var isLocal: Bool { 
+        [.staged, .sending, .failed].contains(self) 
+    }
+    var isRetryable: Bool { 
+        self == .failed 
+    }
+    var isSynced: Bool { 
+        [.sent, .delivered, .read].contains(self) 
+    }
+}
+```
+
+**Merge Logic** (ChatViewModel.startListening):
+```swift
+// Lifecycle-aware merge: local pending + Firestore synced
+let firestoreByID = Dictionary(uniqueKeysWithValues: firestoreMessages.map { ($0.id, $0) })
+var localByID: [String: Message] = [:]
+for msg in oldMessages {
+    localByID[msg.id] = msg
+}
+
+var merged: [Message] = []
+for (id, firestoreMsg) in firestoreByID {
+    if let localMsg = localByID[id], localMsg.status.isLocal {
+        // Prefer local if still pending
+        merged.append(localMsg)
+    } else {
+        // Use Firestore version (source of truth for synced messages)
+        merged.append(firestoreMsg)
+    }
+}
+
+// Add local-only messages not yet in Firestore
+for (id, localMsg) in localByID where firestoreByID[id] == nil && localMsg.status.isLocal {
+    merged.append(localMsg)
+}
+```
+
+**Benefits**:
+- Prevents race conditions (Firestore doesn't overwrite pending local messages)
+- Clear ownership rules
+- Local changes always visible until confirmed
+- Firestore is source of truth for synced data
+
+#### 7. Network State View Modifier Pattern (NEW)
+**Why**: Centralized network state management across views
+
+**Problem**: Previously, every view had duplicate network monitoring code, leading to:
+- Inconsistent offline banners
+- Scattered reconnection logic
+- Difficulty testing network scenarios
+
+**Solution**: Custom SwiftUI `ViewModifier`s for declarative network handling
+
+**Implementation** (NetworkStateViewModifier.swift):
+```swift
+// 1. Network Status Banner
+struct NetworkStateBannerModifier: ViewModifier {
+    @ObservedObject private var networkMonitor = NetworkMonitor.shared
+    
+    func body(content: Content) -> some View {
+        VStack(spacing: 0) {
+            if !networkMonitor.isConnected {
+                HStack {
+                    Image(systemName: "wifi.slash")
+                    Text("No internet - Messages will send when reconnected")
+                        .font(.caption)
+                }
+                .padding(.vertical, 8)
+                .frame(maxWidth: .infinity)
+                .background(Color.orange)
+            }
+            content
+        }
+        .animation(.easeInOut(duration: 0.3), value: networkMonitor.isConnected)
+    }
+}
+
+// 2. Reconnection Action Trigger
+struct OnNetworkReconnectModifier: ViewModifier {
+    @ObservedObject private var networkMonitor = NetworkMonitor.shared
+    let action: () async -> Void
+    @State private var initialCheckDone = false
+    
+    func body(content: Content) -> some View {
+        content
+            .onChange(of: networkMonitor.isConnected) { oldValue, newValue in
+                if initialCheckDone && !oldValue && newValue {
+                    Task { await action() }
+                }
+            }
+            .onAppear {
+                DispatchQueue.main.async { initialCheckDone = true }
+            }
+    }
+}
+
+// View Extensions
+extension View {
+    func networkStateBanner() -> some View {
+        modifier(NetworkStateBannerModifier())
+    }
+    
+    func onNetworkReconnect(perform action: @escaping () async -> Void) -> some View {
+        modifier(OnNetworkReconnectModifier(action: action))
+    }
+}
+```
+
+**Usage**:
+```swift
+struct ConversationListView: View {
+    @StateObject private var viewModel = ConversationListViewModel()
+    
+    var body: some View {
+        NavigationStack {
+            // ... content ...
+        }
+        .networkStateBanner()  // Automatic offline banner
+        .onNetworkReconnect {   // Automatic data refresh
+            await viewModel.fetchConversations()
+        }
+    }
+}
+```
+
+**Benefits**:
+- Declarative, SwiftUI-native approach
+- No duplicate code across views
+- Consistent UX
+- Easy to test
+- Only triggers on reconnect (not initial load)
 
 ## Data Flow Patterns
 
