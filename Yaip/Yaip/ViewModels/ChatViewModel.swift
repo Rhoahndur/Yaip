@@ -27,6 +27,7 @@ class ChatViewModel: ObservableObject {
     private let authManager = AuthManager.shared
     private let localStorage = LocalStorageManager.shared
     private let storageService = StorageService.shared
+    private let networkMonitor = NetworkMonitor.shared
     
     nonisolated(unsafe) private var messageListener: ListenerRegistration?
     nonisolated(unsafe) private var typingListener: ListenerRegistration?
@@ -219,29 +220,36 @@ class ChatViewModel: ObservableObject {
             print("✅ Saved message locally")
         }
         
-        // Upload image if present (async, non-blocking)
+        // Upload image if present (only if online)
         var mediaURL: String?
         if let image = image {
-            print("🖼️ Uploading image in background...")
-            do {
-                mediaURL = try await storageService.uploadChatImage(image, conversationID: conversationID)
-                print("✅ Image uploaded: \(mediaURL ?? "nil")")
-                
-                // Update message with mediaURL
-                if let index = messages.firstIndex(where: { $0.id == messageID }) {
-                    messages[index].mediaURL = mediaURL
-                    newMessage.mediaURL = mediaURL
-                    try? localStorage.saveMessage(messages[index])
-                    print("✅ Updated message with mediaURL")
+            if networkMonitor.isConnected {
+                print("🖼️ Uploading image (online)...")
+                do {
+                    mediaURL = try await storageService.uploadChatImage(image, conversationID: conversationID)
+                    print("✅ Image uploaded: \(mediaURL ?? "nil")")
+                    
+                    // Update message with mediaURL
+                    if let index = messages.firstIndex(where: { $0.id == messageID }) {
+                        messages[index].mediaURL = mediaURL
+                        newMessage.mediaURL = mediaURL
+                        try? localStorage.saveMessage(messages[index])
+                        print("✅ Updated message with mediaURL")
+                    }
+                } catch {
+                    print("❌ Image upload failed: \(error.localizedDescription)")
+                    // Mark as failed (will retry later)
+                    if let index = messages.firstIndex(where: { $0.id == messageID }) {
+                        messages[index].status = .failed
+                        print("⚠️ Message marked as failed (image upload error)")
+                    }
+                    return // Don't try to send to Firestore without image URL
                 }
-            } catch {
-                print("❌ Image upload failed: \(error.localizedDescription)")
-                // Mark as failed but continue (will retry later)
-                if let index = messages.firstIndex(where: { $0.id == messageID }) {
-                    messages[index].status = .failed
-                    print("⚠️ Message marked as failed (image upload error)")
-                }
-                return // Don't try to send to Firestore without image URL
+            } else {
+                print("📵 Offline - skipping image upload, will retry when online")
+                // Leave message in .sending state with no mediaURL
+                // The retry mechanism will pick it up when connection is restored
+                return // Don't try to send to Firestore yet
             }
         }
         
@@ -284,16 +292,24 @@ class ChatViewModel: ObservableObject {
         }
     }
     
-    /// Retry sending a failed message
+    /// Retry sending a failed or stuck message
     func retryMessage(_ message: Message) async {
         guard let messageID = message.id,
-              let index = messages.firstIndex(where: { $0.id == messageID }),
-              message.status == .failed else {
-            print("❌ Cannot retry message: invalid state")
+              let index = messages.firstIndex(where: { $0.id == messageID }) else {
+            print("❌ Cannot retry message: message not found")
             return
         }
         
-        print("🔄 Retrying message: \(messageID)")
+        // Only retry if failed or stuck (sending with no URL)
+        let shouldRetry = message.status == .failed || 
+                         (message.status == .sending && message.mediaType == .image && message.mediaURL == nil)
+        
+        guard shouldRetry else {
+            print("❌ Cannot retry message: status=\(message.status), has URL: \(message.mediaURL != nil)")
+            return
+        }
+        
+        print("🔄 Retrying message: \(messageID) (status: \(message.status))")
         
         // Update status to sending
         messages[index].status = .sending
@@ -351,12 +367,28 @@ class ChatViewModel: ObservableObject {
         }
     }
     
-    /// Retry all failed messages
+    /// Retry all failed messages and stuck pending messages
     func retryAllFailedMessages() async {
-        print("🔄 Retrying all failed messages...")
-        let failedMessages = messages.filter { $0.status == .failed }
+        print("🔄 Retrying all failed/stuck messages...")
         
-        for message in failedMessages {
+        // Find messages that need retry:
+        // 1. Explicitly failed messages
+        // 2. Stuck "sending" image messages (mediaType=.image but no mediaURL - these got stuck uploading offline)
+        let messagesToRetry = messages.filter { message in
+            if message.status == .failed {
+                return true
+            }
+            // Check for stuck image uploads
+            if message.status == .sending && message.mediaType == .image && message.mediaURL == nil {
+                print("⚠️ Found stuck image upload: \(message.id ?? "unknown")")
+                return true
+            }
+            return false
+        }
+        
+        print("📝 Found \(messagesToRetry.count) messages to retry")
+        
+        for message in messagesToRetry {
             await retryMessage(message)
         }
     }
