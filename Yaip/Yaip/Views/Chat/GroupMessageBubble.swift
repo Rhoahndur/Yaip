@@ -17,6 +17,7 @@ struct GroupMessageBubble: View {
     var onRetry: (() -> Void)? = nil
     
     @State private var showingReadReceipts = false
+    @State private var cachedImage: UIImage?
     
     var body: some View {
         HStack {
@@ -62,8 +63,41 @@ struct GroupMessageBubble: View {
                                 EmptyView()
                             }
                         }
+                    } else if let cachedImage = cachedImage {
+                        // Image pending upload - show cached image with overlay
+                        ZStack(alignment: .bottomTrailing) {
+                            Image(uiImage: cachedImage)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(maxWidth: 250)
+                                .cornerRadius(18)
+                                .opacity(message.status == .failed ? 0.6 : 0.9)
+                            
+                            // Status overlay
+                            HStack(spacing: 4) {
+                                if message.status == .failed {
+                                    Image(systemName: "exclamationmark.circle.fill")
+                                        .foregroundStyle(.white)
+                                        .background(Circle().fill(Color.red).padding(-4))
+                                    Text("Failed")
+                                        .font(.caption2)
+                                        .foregroundStyle(.white)
+                                } else {
+                                    ProgressView()
+                                        .scaleEffect(0.7)
+                                        .tint(.white)
+                                    Text("Uploading...")
+                                        .font(.caption2)
+                                        .foregroundStyle(.white)
+                                }
+                            }
+                            .padding(8)
+                            .background(.ultraThinMaterial)
+                            .cornerRadius(8)
+                            .padding(8)
+                        }
                     } else {
-                        // Image pending upload - show placeholder
+                        // No cached image - show placeholder
                         VStack(spacing: 8) {
                             if message.status == .failed {
                                 Image(systemName: "exclamationmark.triangle")
@@ -74,7 +108,7 @@ struct GroupMessageBubble: View {
                                     .foregroundStyle(.secondary)
                             } else {
                                 ProgressView()
-                                Text("Uploading image...")
+                                Text("Loading image...")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
@@ -134,6 +168,15 @@ struct GroupMessageBubble: View {
                 conversation: conversation,
                 currentUserID: currentUserID
             )
+        }
+        .onAppear {
+            // Load cached image if message has no URL yet
+            if message.mediaType == .image && message.mediaURL == nil,
+               let messageID = message.id {
+                Task { @MainActor in
+                    cachedImage = LocalStorageManager.shared.loadImage(forMessageID: messageID)
+                }
+            }
         }
     }
     

@@ -12,6 +12,8 @@ struct MessageBubble: View {
     let isFromCurrentUser: Bool
     var onRetry: (() -> Void)? = nil
     
+    @State private var cachedImage: UIImage?
+    
     var body: some View {
         HStack(alignment: .bottom, spacing: 8) {
             if isFromCurrentUser { Spacer(minLength: 50) }
@@ -42,8 +44,41 @@ struct MessageBubble: View {
                                 EmptyView()
                             }
                         }
+                    } else if let cachedImage = cachedImage {
+                        // Image pending upload - show cached image with overlay
+                        ZStack(alignment: .bottomTrailing) {
+                            Image(uiImage: cachedImage)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(maxWidth: 250)
+                                .cornerRadius(18)
+                                .opacity(message.status == .failed ? 0.6 : 0.9)
+                            
+                            // Status overlay
+                            HStack(spacing: 4) {
+                                if message.status == .failed {
+                                    Image(systemName: "exclamationmark.circle.fill")
+                                        .foregroundStyle(.white)
+                                        .background(Circle().fill(Color.red).padding(-4))
+                                    Text("Failed")
+                                        .font(.caption2)
+                                        .foregroundStyle(.white)
+                                } else {
+                                    ProgressView()
+                                        .scaleEffect(0.7)
+                                        .tint(.white)
+                                    Text("Uploading...")
+                                        .font(.caption2)
+                                        .foregroundStyle(.white)
+                                }
+                            }
+                            .padding(8)
+                            .background(.ultraThinMaterial)
+                            .cornerRadius(8)
+                            .padding(8)
+                        }
                     } else {
-                        // Image pending upload - show placeholder
+                        // No cached image - show placeholder (shouldn't happen often)
                         VStack(spacing: 8) {
                             if message.status == .failed {
                                 Image(systemName: "exclamationmark.triangle")
@@ -54,7 +89,7 @@ struct MessageBubble: View {
                                     .foregroundStyle(.secondary)
                             } else {
                                 ProgressView()
-                                Text("Uploading image...")
+                                Text("Loading image...")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
@@ -119,6 +154,15 @@ struct MessageBubble: View {
         .onTapGesture {
             if message.status == .failed {
                 onRetry?()
+            }
+        }
+        .onAppear {
+            // Load cached image if message has no URL yet
+            if message.mediaType == .image && message.mediaURL == nil,
+               let messageID = message.id {
+                Task { @MainActor in
+                    cachedImage = LocalStorageManager.shared.loadImage(forMessageID: messageID)
+                }
             }
         }
     }
