@@ -189,6 +189,12 @@ struct MessageBubble: View {
     @ViewBuilder
     private var statusIcon: some View {
         switch message.status {
+        case .staged:
+            HStack(spacing: 2) {
+                Image(systemName: "clock")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary.opacity(0.5))
+            }
         case .sending:
             HStack(spacing: 2) {
                 Image(systemName: "clock")

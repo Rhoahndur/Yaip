@@ -90,29 +90,39 @@ class ChatViewModel: ObservableObject {
                 
                 let oldMessages = self.messages
                 
-                // Smart merge: Keep Firestore messages + pending local messages
+                // LIFECYCLE-AWARE MERGE: Respect local vs network state ownership
                 var mergedMessages: [Message] = []
                 let firestoreIDs = Set(firestoreMessages.compactMap { $0.id })
+                let localByID = Dictionary(uniqueKeysWithValues: oldMessages.compactMap { msg in
+                    guard let id = msg.id else { return nil }
+                    return (id, msg)
+                })
                 
-                // Add all Firestore messages (source of truth for synced messages)
-                mergedMessages.append(contentsOf: firestoreMessages)
-                
-                // Keep local pending/failed messages that haven't synced yet
-                let pendingLocal = oldMessages.filter { localMsg in
-                    guard let id = localMsg.id else { return false }
-                    // Keep if not in Firestore and still pending/failed
-                    let isPending = !firestoreIDs.contains(id) && 
-                                   (localMsg.status == .sending || localMsg.status == .failed)
+                // Add Firestore messages (but respect local states)
+                for firestoreMsg in firestoreMessages {
+                    guard let id = firestoreMsg.id else { continue }
                     
-                    if isPending {
-                        print("📌 Keeping pending message \(id): text='\(localMsg.text ?? "nil")', hasMedia=\(localMsg.mediaType != nil), status=\(localMsg.status)")
+                    // If we have a local version, check if we should keep it instead
+                    if let localMsg = localByID[id] {
+                        // Keep local version if it's in a local state (.staged, .sending, .failed)
+                        // These states are "owned" by the local device
+                        if localMsg.status.isLocal {
+                            mergedMessages.append(localMsg)
+                            continue
+                        }
+                        // Otherwise, use Firestore version (it's the source of truth for synced states)
                     }
                     
-                    return isPending
+                    // Use Firestore version
+                    mergedMessages.append(firestoreMsg)
                 }
-                mergedMessages.append(contentsOf: pendingLocal)
                 
-                print("🔀 Merge complete: Firestore=\(firestoreMessages.count), Pending=\(pendingLocal.count), Total=\(mergedMessages.count)")
+                // Keep local messages that aren't in Firestore yet
+                let localOnlyMessages = oldMessages.filter { localMsg in
+                    guard let id = localMsg.id else { return false }
+                    return !firestoreIDs.contains(id) && localMsg.status.isLocal
+                }
+                mergedMessages.append(contentsOf: localOnlyMessages)
                 
                 // Sort by timestamp
                 mergedMessages.sort { $0.timestamp < $1.timestamp }
@@ -120,19 +130,17 @@ class ChatViewModel: ObservableObject {
                 self.messages = mergedMessages
                 self.isLoading = false
                 
+                // Log merge results
+                let pendingCount = mergedMessages.filter { $0.status.isLocal }.count
+                print("🔀 Lifecycle-aware merge: Firestore=\(firestoreMessages.count), Local=\(pendingCount), Total=\(mergedMessages.count)")
+                
                 // Auto-retry pending messages if we're online
-                if !pendingLocal.isEmpty {
-                    print("📶 Pending messages found. Network status: \(self.networkMonitor.isConnected ? "ONLINE ✅" : "OFFLINE ❌")")
-                    
-                    if self.networkMonitor.isConnected {
-                        print("🔄 Network online + pending messages detected - triggering auto-retry")
-                        Task {
-                            // Small delay to let UI settle
-                            try? await Task.sleep(nanoseconds: 500_000_000)
-                            await self.retryAllFailedMessages()
-                        }
-                    } else {
-                        print("⚠️ Not retrying - device is offline")
+                if pendingCount > 0 && self.networkMonitor.isConnected {
+                    print("🔄 Network online + \(pendingCount) pending messages - triggering auto-retry")
+                    Task {
+                        // Small delay to let UI settle
+                        try? await Task.sleep(nanoseconds: 500_000_000)
+                        await self.retryAllFailedMessages()
                     }
                 }
                 
@@ -188,7 +196,7 @@ class ChatViewModel: ObservableObject {
         typingListener = nil
     }
     
-    /// Send a message (simplified with ImageUploadManager)
+    /// Send a message (with proper lifecycle stages)
     func sendMessage() async {
         guard let currentUserID = authManager.currentUserID,
               let conversationID = conversation.id else {
@@ -212,7 +220,7 @@ class ChatViewModel: ObservableObject {
             await updateTypingStatus(false)
         }
         
-        // Create message
+        // STAGE 1: Create message in .staged state
         let messageID = UUID().uuidString
         var newMessage = Message(
             id: nil,
@@ -222,7 +230,7 @@ class ChatViewModel: ObservableObject {
             mediaURL: nil,
             mediaType: image != nil ? .image : nil,
             timestamp: Date(),
-            status: .sending,
+            status: .staged,  // Start as staged (local only)
             readBy: [currentUserID]
         )
         newMessage.id = messageID
@@ -233,7 +241,7 @@ class ChatViewModel: ObservableObject {
         // Save locally
         try? localStorage.saveMessage(newMessage)
         
-        // Handle image via ImageUploadManager
+        // STAGE 2: Handle image upload (if present)
         var mediaURL: String?
         if let image = image {
             // Cache image first
@@ -241,6 +249,11 @@ class ChatViewModel: ObservableObject {
             
             // Try to upload if online
             if networkMonitor.isConnected {
+                // Update to .sending state
+                if let index = messages.firstIndex(where: { $0.id == messageID }) {
+                    messages[index].status = .sending
+                }
+                
                 mediaURL = await imageUploadManager.uploadImage(for: messageID, conversationID: conversationID)
                 
                 if let url = mediaURL {
@@ -258,21 +271,26 @@ class ChatViewModel: ObservableObject {
                     return
                 }
             } else {
-                // Offline - keep in .sending state for later retry
+                // Offline - stay in .staged state for later processing
                 return
             }
         }
         
-        // Send to Firestore
+        // STAGE 3: Send to Firestore
+        // Update to .sending state (if not already)
+        if let index = messages.firstIndex(where: { $0.id == messageID }) {
+            if messages[index].status != .sending {
+                messages[index].status = .sending
+            }
+        }
+        
         do {
             try await messageService.sendMessage(newMessage)
             
-            // Mark as synced
-            try? localStorage.markMessageSynced(id: messageID)
-            
-            // Update status
+            // STAGE 4: Mark as sent (will be confirmed by listener → .delivered/.read)
             if let index = messages.firstIndex(where: { $0.id == messageID }) {
                 messages[index].status = .sent
+                try? localStorage.markMessageSynced(id: messageID)
             }
             
             // Update conversation last message
@@ -295,7 +313,7 @@ class ChatViewModel: ObservableObject {
         }
     }
     
-    /// Retry sending a failed or stuck message (simplified with ImageUploadManager)
+    /// Retry sending a failed or stuck message (with lifecycle awareness)
     func retryMessage(_ message: Message) async {
         guard let messageID = message.id,
               let index = messages.firstIndex(where: { $0.id == messageID }),
@@ -304,17 +322,17 @@ class ChatViewModel: ObservableObject {
             return
         }
         
-        // Only retry if failed or stuck
-        let shouldRetry = message.status == .failed || 
-                         (message.status == .sending && message.mediaType == .image && message.mediaURL == nil)
-        
-        guard shouldRetry else { return }
+        // Only retry if in retryable state
+        guard message.status.isRetryable || message.status == .staged ||
+              (message.status == .sending && message.mediaType == .image && message.mediaURL == nil) else {
+            return
+        }
         
         // Update status to sending
         messages[index].status = .sending
         var updatedMessage = messages[index]
         
-        // Handle image retry via ImageUploadManager
+        // Handle image upload via ImageUploadManager
         if updatedMessage.mediaType == .image && updatedMessage.mediaURL == nil {
             if let mediaURL = await imageUploadManager.retryUpload(for: messageID, conversationID: conversationID) {
                 // Upload succeeded
@@ -331,11 +349,9 @@ class ChatViewModel: ObservableObject {
         do {
             try await messageService.sendMessage(updatedMessage)
             
-            // Mark as synced
-            try? localStorage.markMessageSynced(id: messageID)
-            
-            // Update status
+            // Mark as sent (will be confirmed by listener)
             messages[index].status = .sent
+            try? localStorage.markMessageSynced(id: messageID)
             
             // Update conversation last message
             let lastMessageText = updatedMessage.text ?? "📷 Photo"
@@ -354,15 +370,20 @@ class ChatViewModel: ObservableObject {
         }
     }
     
-    /// Retry all failed messages and stuck pending messages
+    /// Retry all failed and pending messages
     /// Strategy: Auto-retry once on reconnect, then require manual retry (tap button)
     func retryAllFailedMessages() async {
         guard networkMonitor.isConnected else { return }
         
-        // Find messages that need retry
+        // Find messages that need retry (using new lifecycle states)
         let messagesToRetry = messages.filter { message in
-            // Only auto-retry if this is the first attempt (retryCount < 2)
-            if message.status == .failed {
+            // Staged messages (created offline, never sent)
+            if message.status == .staged {
+                return true
+            }
+            
+            // Failed messages (only auto-retry if first attempt)
+            if message.status.isRetryable {
                 // Check ImageUploadManager for retry count
                 if let messageID = message.id,
                    case .failed(_, let retryCount) = imageUploadManager.getState(for: messageID) {

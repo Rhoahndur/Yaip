@@ -193,6 +193,10 @@ struct GroupMessageBubble: View {
     @ViewBuilder
     private var statusIcon: some View {
         switch message.status {
+        case .staged:
+            Image(systemName: "clock")
+                .font(.caption2)
+                .foregroundStyle(.secondary.opacity(0.5))
         case .sending:
             Image(systemName: "clock")
                 .font(.caption2)

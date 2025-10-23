@@ -39,13 +39,42 @@ struct Message: Codable, Identifiable, Equatable, Hashable {
     }
 }
 
-/// Message delivery status
+/// Message delivery status with clear lifecycle stages
 enum MessageStatus: String, Codable {
-    case sending    // Optimistic UI - not yet sent
-    case sent       // Saved to Firestore
-    case delivered  // Other user's device received
-    case read       // Other user opened chat
+    // Local states (before network operations)
+    case staged     // Created, saved locally, ready to send
+    case sending    // Currently uploading/sending to Firestore
     case failed     // Send failed, needs retry
+    
+    // Network states (confirmed by Firestore)
+    case sent       // Successfully saved to Firestore
+    case delivered  // Other user's device received (confirmed by listener)
+    case read       // Other user opened chat (confirmed by listener)
+    
+    /// Is this a local state (not confirmed by Firestore)?
+    var isLocal: Bool {
+        switch self {
+        case .staged, .sending, .failed:
+            return true
+        case .sent, .delivered, .read:
+            return false
+        }
+    }
+    
+    /// Can this message be retried?
+    var isRetryable: Bool {
+        return self == .failed
+    }
+    
+    /// Is this a final state (confirmed by Firestore)?
+    var isSynced: Bool {
+        switch self {
+        case .sent, .delivered, .read:
+            return true
+        case .staged, .sending, .failed:
+            return false
+        }
+    }
 }
 
 /// Type of media attached to message
