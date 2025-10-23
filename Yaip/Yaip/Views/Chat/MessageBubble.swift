@@ -19,89 +19,107 @@ struct MessageBubble: View {
             if isFromCurrentUser { Spacer(minLength: 50) }
             
             VStack(alignment: isFromCurrentUser ? .trailing : .leading, spacing: 2) {
-                // Image handling
+                // Image + Text together in one bubble (if both present)
                 if message.mediaType == .image {
-                    if let mediaURL = message.mediaURL {
-                        // Image uploaded - show from URL
-                        let _ = print("🖼️ MessageBubble displaying image: \(mediaURL)")
-                        AsyncImage(url: URL(string: mediaURL)) { phase in
-                            switch phase {
-                            case .empty:
-                                ProgressView()
-                                    .frame(width: 200, height: 200)
-                            case .success(let image):
-                                image
+                    VStack(alignment: .leading, spacing: 0) {
+                        // Image part
+                        if let mediaURL = message.mediaURL {
+                            // Image uploaded - show from URL
+                            let _ = print("🖼️ MessageBubble displaying image: \(mediaURL)")
+                            AsyncImage(url: URL(string: mediaURL)) { phase in
+                                switch phase {
+                                case .empty:
+                                    ProgressView()
+                                        .frame(width: 250, height: 200)
+                                case .success(let image):
+                                    image
+                                        .resizable()
+                                        .scaledToFit()
+                                        .frame(maxWidth: 250)
+                                case .failure:
+                                    Image(systemName: "photo")
+                                        .font(.largeTitle)
+                                        .foregroundStyle(.secondary)
+                                        .frame(width: 250, height: 200)
+                                @unknown default:
+                                    EmptyView()
+                                }
+                            }
+                        } else if let cachedImage = cachedImage {
+                            // Image pending upload - show cached image with overlay
+                            ZStack(alignment: .bottomTrailing) {
+                                Image(uiImage: cachedImage)
                                     .resizable()
                                     .scaledToFit()
                                     .frame(maxWidth: 250)
-                                    .cornerRadius(18)
-                            case .failure:
-                                Image(systemName: "photo")
-                                    .font(.largeTitle)
-                                    .foregroundStyle(.secondary)
-                                    .frame(width: 200, height: 200)
-                            @unknown default:
-                                EmptyView()
+                                    .opacity(message.status == .failed ? 0.6 : 0.9)
+                                
+                                // Status overlay
+                                HStack(spacing: 4) {
+                                    if message.status == .failed {
+                                        Image(systemName: "exclamationmark.circle.fill")
+                                            .foregroundStyle(.white)
+                                            .background(Circle().fill(Color.red).padding(-4))
+                                        Text("Failed")
+                                            .font(.caption2)
+                                            .foregroundStyle(.white)
+                                    } else {
+                                        ProgressView()
+                                            .scaleEffect(0.7)
+                                            .tint(.white)
+                                        Text("Uploading...")
+                                            .font(.caption2)
+                                            .foregroundStyle(.white)
+                                    }
+                                }
+                                .padding(8)
+                                .background(.ultraThinMaterial)
+                                .cornerRadius(8)
+                                .padding(8)
                             }
-                        }
-                    } else if let cachedImage = cachedImage {
-                        // Image pending upload - show cached image with overlay
-                        ZStack(alignment: .bottomTrailing) {
-                            Image(uiImage: cachedImage)
-                                .resizable()
-                                .scaledToFit()
-                                .frame(maxWidth: 250)
-                                .cornerRadius(18)
-                                .opacity(message.status == .failed ? 0.6 : 0.9)
-                            
-                            // Status overlay
-                            HStack(spacing: 4) {
+                        } else {
+                            // No cached image - show placeholder
+                            VStack(spacing: 8) {
                                 if message.status == .failed {
-                                    Image(systemName: "exclamationmark.circle.fill")
-                                        .foregroundStyle(.white)
-                                        .background(Circle().fill(Color.red).padding(-4))
-                                    Text("Failed")
-                                        .font(.caption2)
-                                        .foregroundStyle(.white)
+                                    Image(systemName: "exclamationmark.triangle")
+                                        .font(.system(size: 40))
+                                        .foregroundStyle(.red)
+                                    Text("Image upload failed")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
                                 } else {
                                     ProgressView()
-                                        .scaleEffect(0.7)
-                                        .tint(.white)
-                                    Text("Uploading...")
-                                        .font(.caption2)
-                                        .foregroundStyle(.white)
+                                    Text("Loading image...")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
                                 }
                             }
-                            .padding(8)
-                            .background(.ultraThinMaterial)
-                            .cornerRadius(8)
-                            .padding(8)
+                            .frame(width: 250, height: 200)
+                            .background(Color(.systemGray6))
                         }
-                    } else {
-                        // No cached image - show placeholder (shouldn't happen often)
-                        VStack(spacing: 8) {
-                            if message.status == .failed {
-                                Image(systemName: "exclamationmark.triangle")
-                                    .font(.system(size: 40))
-                                    .foregroundStyle(.red)
-                                Text("Image upload failed")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            } else {
-                                ProgressView()
-                                Text("Loading image...")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
+                        
+                        // Caption text (if present) - below image in same container
+                        if let text = message.text, !text.isEmpty {
+                            Text(text)
+                                .font(.system(size: 16))
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 10)
+                                .frame(maxWidth: 250, alignment: .leading)
+                                .foregroundStyle(isFromCurrentUser ? .white : .primary)
                         }
-                        .frame(width: 200, height: 200)
-                        .background(Color(.systemGray6))
-                        .cornerRadius(18)
                     }
-                }
-                
-                // Message bubble
-                if let text = message.text {
+                    .background(
+                        isFromCurrentUser ?
+                        LinearGradient(colors: [Color(hex: "0084FF"), Color(hex: "0066CC")],
+                                     startPoint: .topLeading,
+                                     endPoint: .bottomTrailing) :
+                        LinearGradient(colors: [Color(.systemGray5), Color(.systemGray6)],
+                                     startPoint: .topLeading,
+                                     endPoint: .bottomTrailing)
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                } else if let text = message.text {
+                    // Text-only message (no image)
                     Text(text)
                         .font(.system(size: 16))
                         .padding(.horizontal, 14)
