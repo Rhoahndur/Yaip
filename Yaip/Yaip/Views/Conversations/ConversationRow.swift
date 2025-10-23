@@ -16,6 +16,12 @@ struct ConversationRow: View {
     @State private var statusListener: ListenerRegistration?
     @ObservedObject private var networkMonitor = NetworkMonitor.shared
     
+    // Check if this conversation has unread messages
+    private var hasUnreadMessages: Bool {
+        guard let currentUserID = currentUserID else { return false }
+        return (conversation.unreadCount[currentUserID] ?? 0) > 0
+    }
+    
     var body: some View {
         HStack(spacing: 16) {
             // Avatar with online status badge
@@ -61,24 +67,24 @@ struct ConversationRow: View {
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
                     Text(displayName)
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(.primary)
+                        .font(.system(size: 17, weight: hasUnreadMessages ? .bold : .semibold))
+                        .foregroundStyle(hasUnreadMessages ? .primary : .primary)
                         .lineLimit(1)
                     
                     Spacer()
                     
                     if let lastMessage = conversation.lastMessage {
                         Text(lastMessage.timestamp.timeString)
-                            .font(.system(size: 15))
-                            .foregroundStyle(.secondary)
+                            .font(.system(size: 15, weight: hasUnreadMessages ? .semibold : .regular))
+                            .foregroundStyle(hasUnreadMessages ? Color.blue : .secondary)
                     }
                 }
                 
                 HStack(spacing: 8) {
                     if let lastMessage = conversation.lastMessage {
                         Text(lastMessage.text)
-                            .font(.system(size: 15))
-                            .foregroundStyle(.secondary)
+                            .font(.system(size: 15, weight: hasUnreadMessages ? .medium : .regular))
+                            .foregroundStyle(hasUnreadMessages ? .primary : .secondary)
                             .lineLimit(2)
                     } else {
                         Text("No messages yet")
@@ -89,18 +95,26 @@ struct ConversationRow: View {
                     
                     Spacer()
                     
-                    // Unread badge
+                    // Unread badge - show count or blue dot
                     if let currentUserID = currentUserID,
                        let unreadCount = conversation.unreadCount[currentUserID],
                        unreadCount > 0 {
-                        Text("\(unreadCount)")
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(.white)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(Color.blue)
-                            .clipShape(Capsule())
-                            .frame(minWidth: 24)
+                        if unreadCount > 1 {
+                            // Show count for multiple unread
+                            Text("\(unreadCount)")
+                                .font(.system(size: 13, weight: .bold))
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(Color.blue)
+                                .clipShape(Capsule())
+                                .frame(minWidth: 24)
+                        } else {
+                            // Show blue dot for single unread
+                            Circle()
+                                .fill(Color.blue)
+                                .frame(width: 12, height: 12)
+                        }
                     }
                 }
             }
