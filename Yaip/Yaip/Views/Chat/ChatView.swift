@@ -38,10 +38,18 @@ struct ChatView: View {
                     Text("No internet connection - Messages will send when reconnected")
                         .font(.caption)
                         .foregroundStyle(.white)
+                    
+                    // Debug: Show actual network state
+                    Text("(Monitor: \(networkMonitor.isConnected ? "ON" : "OFF"))")
+                        .font(.system(size: 8))
+                        .foregroundStyle(.white.opacity(0.7))
                 }
                 .padding(.vertical, 8)
                 .frame(maxWidth: .infinity)
                 .background(Color.orange)
+                .onAppear {
+                    print("🟠 Offline banner appeared - isConnected: \(networkMonitor.isConnected)")
+                }
             }
             
             // Messages list
@@ -210,6 +218,8 @@ struct ChatView: View {
             ChatDetailView(conversation: conversation)
         }
         .onAppear {
+            print("👁️ ChatView appeared - Network status: \(networkMonitor.isConnected ? "ONLINE ✅" : "OFFLINE ❌")")
+            
             // Load conversation name first
             loadConversationName()
             
@@ -235,6 +245,7 @@ struct ChatView: View {
             }
         }
         .onChange(of: networkMonitor.isConnected) { oldValue, newValue in
+            print("🔄 ChatView network change detected: \(oldValue) → \(newValue)")
             // Auto-retry when network comes back online
             if !oldValue && newValue {
                 print("🌐 Network reconnected - retrying failed messages and reloading status")
@@ -246,6 +257,8 @@ struct ChatView: View {
                         await loadOtherUserStatus()
                     }
                 }
+            } else {
+                print("⚠️ Network change but not reconnection case (old:\(oldValue), new:\(newValue))")
             }
         }
         .onDisappear {

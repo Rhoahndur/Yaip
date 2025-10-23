@@ -120,6 +120,22 @@ class ChatViewModel: ObservableObject {
                 self.messages = mergedMessages
                 self.isLoading = false
                 
+                // Auto-retry pending messages if we're online
+                if !pendingLocal.isEmpty {
+                    print("📶 Pending messages found. Network status: \(self.networkMonitor.isConnected ? "ONLINE ✅" : "OFFLINE ❌")")
+                    
+                    if self.networkMonitor.isConnected {
+                        print("🔄 Network online + pending messages detected - triggering auto-retry")
+                        Task {
+                            // Small delay to let UI settle
+                            try? await Task.sleep(nanoseconds: 500_000_000)
+                            await self.retryAllFailedMessages()
+                        }
+                    } else {
+                        print("⚠️ Not retrying - device is offline")
+                    }
+                }
+                
                 // Save Firestore messages to local storage
                 for message in firestoreMessages {
                     try? self.localStorage.saveMessage(message)
@@ -418,18 +434,21 @@ class ChatViewModel: ObservableObject {
     
     /// Retry all failed messages and stuck pending messages
     func retryAllFailedMessages() async {
-        print("🔄 Retrying all failed/stuck messages...")
+        print("🔄 ===== RETRY ALL MESSAGES CALLED =====")
+        print("   Total messages in array: \(messages.count)")
+        print("   Network status: \(networkMonitor.isConnected ? "ONLINE ✅" : "OFFLINE ❌")")
         
         // Find messages that need retry:
         // 1. Explicitly failed messages
         // 2. Stuck "sending" image messages (mediaType=.image but no mediaURL - these got stuck uploading offline)
         let messagesToRetry = messages.filter { message in
             if message.status == .failed {
+                print("   ❌ Found failed message: \(message.id ?? "unknown")")
                 return true
             }
             // Check for stuck image uploads
             if message.status == .sending && message.mediaType == .image && message.mediaURL == nil {
-                print("⚠️ Found stuck image upload: \(message.id ?? "unknown")")
+                print("   ⏳ Found stuck image upload: \(message.id ?? "unknown"), text: '\(message.text ?? "nil")'")
                 return true
             }
             return false
@@ -437,9 +456,15 @@ class ChatViewModel: ObservableObject {
         
         print("📝 Found \(messagesToRetry.count) messages to retry")
         
+        if messagesToRetry.isEmpty {
+            print("⚠️ No messages found to retry (but function was called)")
+        }
+        
         for message in messagesToRetry {
             await retryMessage(message)
         }
+        
+        print("🏁 ===== RETRY ALL MESSAGES COMPLETE =====")
     }
     
     /// Mark all messages as read
