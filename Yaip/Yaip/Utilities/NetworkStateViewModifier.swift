@@ -48,7 +48,7 @@ struct NetworkStateBannerModifier: ViewModifier {
                     Image(systemName: "wifi.slash")
                         .foregroundStyle(.white)
                         .font(.caption)
-                    Text("No internet connection")
+                    Text("No internet connection - Messages will send when reconnected")
                         .font(.caption)
                         .foregroundStyle(.white)
                 }
@@ -56,11 +56,20 @@ struct NetworkStateBannerModifier: ViewModifier {
                 .frame(maxWidth: .infinity)
                 .background(Color.orange)
                 .transition(.move(edge: .top).combined(with: .opacity))
+                .onAppear {
+                    print("🔴 Offline banner appeared")
+                }
+                .onDisappear {
+                    print("🟢 Offline banner disappeared")
+                }
             }
             
             content
         }
         .animation(.easeInOut(duration: 0.3), value: networkMonitor.isConnected)
+        .onChange(of: networkMonitor.isConnected) { oldValue, newValue in
+            print("📡 NetworkStateBanner detected change: \(oldValue) → \(newValue)")
+        }
     }
 }
 
