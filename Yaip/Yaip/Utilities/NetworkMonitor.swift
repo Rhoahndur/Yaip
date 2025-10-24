@@ -94,6 +94,9 @@ class NetworkMonitor: ObservableObject {
                         self.isConnected = true
                         self.connectionType = .wifi  // Assume WiFi for simulator
                         print("📱 Updated NetworkMonitor.isConnected: \(oldState) → \(self.isConnected) (via real check)")
+                        print("🎉 CONNECTION RESTORED - Triggering reconnect notifications (via real check)")
+                        // Post notification for immediate sync
+                        NotificationCenter.default.post(name: .networkDidReconnect, object: nil)
                         self.stopReconnectPolling()
                     }
                 } else {
@@ -137,6 +140,16 @@ class NetworkMonitor: ObservableObject {
             
             print("📱 Updated NetworkMonitor.isConnected: \(oldState) → \(self.isConnected)")
             
+            // Detect transition from offline → online
+            let wasOffline = oldState == false
+            let isNowOnline = newConnectionState == true
+            
+            if wasOffline && isNowOnline {
+                print("🎉 CONNECTION RESTORED - Triggering reconnect notifications")
+                // Post notification for immediate sync
+                NotificationCenter.default.post(name: .networkDidReconnect, object: nil)
+            }
+            
             if newConnectionState {
                 print("✅ ONLINE via \(newConnectionType)")
                 // Stop polling timer when we're back online
@@ -155,13 +168,14 @@ class NetworkMonitor: ObservableObject {
     }
     
     /// Start periodic polling to check for reconnection (only runs when offline)
+    /// FASTER POLLING: Check every 5 seconds when offline for quicker reconnection detection
     private func startReconnectPolling() {
         // Don't start if already running
         guard reconnectTimer == nil else { return }
         
-        print("⏱️ Starting reconnect polling (every 15 seconds)")
+        print("⏱️ Starting reconnect polling (every 5 seconds)")
         
-        reconnectTimer = Timer.scheduledTimer(withTimeInterval: 15.0, repeats: true) { [weak self] _ in
+        reconnectTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { [weak self] _ in
             guard let self = self else { return }
             // Only check if we're still offline
             if !self.isConnected {
@@ -190,5 +204,10 @@ class NetworkMonitor: ObservableObject {
         }
         return .unknown
     }
+}
+
+// MARK: - Notification Names
+extension Notification.Name {
+    static let networkDidReconnect = Notification.Name("networkDidReconnect")
 }
 

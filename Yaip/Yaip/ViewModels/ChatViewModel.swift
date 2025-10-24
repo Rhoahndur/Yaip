@@ -36,6 +36,7 @@ class ChatViewModel: ObservableObject {
     init(conversation: Conversation) {
         self.conversation = conversation
         setupMessageTextObserver()
+        setupNetworkReconnectListener()
         
         // Load participant names for group chats
         if conversation.type == .group {
@@ -43,6 +44,19 @@ class ChatViewModel: ObservableObject {
                 await loadParticipantNames()
             }
         }
+    }
+    
+    /// Setup listener for network reconnection
+    private func setupNetworkReconnectListener() {
+        NotificationCenter.default.publisher(for: .networkDidReconnect)
+            .sink { [weak self] _ in
+                guard let self = self else { return }
+                print("🔄 Network reconnected - immediately retrying pending messages")
+                Task { @MainActor in
+                    await self.retryAllFailedMessages()
+                }
+            }
+            .store(in: &cancellables)
     }
     
     /// Get sender display name
@@ -137,12 +151,11 @@ class ChatViewModel: ObservableObject {
                 self.messages = mergedMessages
                 self.isLoading = false
                 
-                // Auto-retry pending messages if we're online
+                // Auto-retry pending messages if we're online (FASTER - no delay)
                 let pendingCount = mergedMessages.filter { $0.status.isLocal }.count
                 if pendingCount > 0 && self.networkMonitor.isConnected {
+                    print("🔄 Auto-retrying \(pendingCount) pending messages...")
                     Task {
-                        // Small delay to let UI settle
-                        try? await Task.sleep(nanoseconds: 500_000_000)
                         await self.retryAllFailedMessages()
                     }
                 }
@@ -369,12 +382,41 @@ class ChatViewModel: ObservableObject {
         
         // Handle image upload via ImageUploadManager
         if updatedMessage.mediaType == .image && updatedMessage.mediaURL == nil {
-            if let mediaURL = await imageUploadManager.retryUpload(for: messageID, conversationID: conversationID) {
+            print("📤 Retrying image upload for message: \(messageID)")
+            
+            // Check current image state
+            let imageState = imageUploadManager.getState(for: messageID)
+            print("   Image state: \(imageState)")
+            
+            var mediaURL: String?
+            
+            // If cached (offline upload), call uploadImage directly
+            // If failed, call retryUpload
+            switch imageState {
+            case .cached, .notStarted:
+                // Try to load from disk if not in memory
+                if let cachedImage = imageUploadManager.getCachedImage(for: messageID) {
+                    print("   Found cached image, uploading...")
+                    imageUploadManager.cacheImage(cachedImage, for: messageID)
+                    mediaURL = await imageUploadManager.uploadImage(for: messageID, conversationID: conversationID)
+                } else {
+                    print("   ❌ No cached image found")
+                }
+            case .failed:
+                print("   Retrying failed upload...")
+                mediaURL = await imageUploadManager.retryUpload(for: messageID, conversationID: conversationID)
+            default:
+                print("   Image state not retryable: \(imageState)")
+            }
+            
+            if let url = mediaURL {
                 // Upload succeeded
-                updatedMessage.mediaURL = mediaURL
+                print("   ✅ Image uploaded: \(url)")
+                updatedMessage.mediaURL = url
                 messages[index].mediaURL = mediaURL
             } else {
                 // Upload failed
+                print("   ❌ Image upload failed")
                 messages[index].status = .failed
                 return
             }
