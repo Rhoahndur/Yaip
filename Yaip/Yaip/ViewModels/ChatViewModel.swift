@@ -282,38 +282,50 @@ class ChatViewModel: ObservableObject {
         if let image = image {
             // Cache image first
             imageUploadManager.cacheImage(image, for: messageID)
+            print("💾 Image cached for message: \(messageID)")
             
-            // Try to upload if online
-            if networkMonitor.isConnected {
-                // Update to .sending state
+            // Try to upload (optimistic approach)
+            print("📡 Attempting image upload...")
+            
+            // Update to .sending state
+            if let index = messages.firstIndex(where: { $0.id == messageID }) {
+                messages[index].status = .sending
+            }
+            
+            mediaURL = await imageUploadManager.uploadImage(for: messageID, conversationID: conversationID)
+            
+            if let url = mediaURL {
+                // Update message with URL
                 if let index = messages.firstIndex(where: { $0.id == messageID }) {
-                    messages[index].status = .sending
-                }
-                
-                mediaURL = await imageUploadManager.uploadImage(for: messageID, conversationID: conversationID)
-                
-                if let url = mediaURL {
-                    // Update message with URL
-                    if let index = messages.firstIndex(where: { $0.id == messageID }) {
-                        messages[index].mediaURL = url
-                        newMessage.mediaURL = url
-                        try? localStorage.saveMessage(messages[index])
-                        print("✅ Image URL assigned to message: \(url)")
-                    }
-                } else {
-                    // Upload failed - mark as failed
-                    if let index = messages.firstIndex(where: { $0.id == messageID }) {
-                        messages[index].status = .failed
-                    }
-                    return
+                    messages[index].mediaURL = url
+                    newMessage.mediaURL = url
+                    try? localStorage.saveMessage(messages[index])
+                    print("✅ Image URL assigned to message: \(url)")
                 }
             } else {
-                // Offline - stay in .staged state for later processing
-                return
+                // Upload failed - stay in .staged state, will retry on reconnect
+                print("⚠️ Image upload failed - staying in .staged state for retry")
+                if let index = messages.firstIndex(where: { $0.id == messageID }) {
+                    messages[index].status = .staged
+                }
+                // Don't return - still try to send text-only message if present
+                if text.isEmpty {
+                    return  // Image-only message, wait for retry
+                }
+                // Has text, continue to send text without image
+                print("   Message has text, sending text without image")
             }
         }
         
         // STAGE 3: Send to Firestore
+        // OPTIMISTIC APPROACH: Try to send regardless of network status
+        // Let Firebase SDK handle offline behavior (it has better detection)
+        // If truly offline, Firebase will queue it automatically
+        if !networkMonitor.isConnected {
+            print("⚠️ NetworkMonitor thinks we're offline, but trying anyway...")
+            print("   Firebase SDK will handle offline queueing if truly offline")
+        }
+        
         // Update to .sending state (if not already)
         if let index = messages.firstIndex(where: { $0.id == messageID }) {
             if messages[index].status != .sending {
@@ -450,12 +462,20 @@ class ChatViewModel: ObservableObject {
     /// Retry all failed and pending messages
     /// Strategy: Auto-retry once on reconnect, then require manual retry (tap button)
     func retryAllFailedMessages() async {
-        guard networkMonitor.isConnected else { return }
+        print("🔄 retryAllFailedMessages() called")
+        print("   Network connected: \(networkMonitor.isConnected)")
+        print("   Total messages: \(messages.count)")
+        
+        guard networkMonitor.isConnected else { 
+            print("   ❌ Skipping retry - offline")
+            return 
+        }
         
         // Find messages that need retry (using new lifecycle states)
         let messagesToRetry = messages.filter { message in
             // Staged messages (created offline, never sent)
             if message.status == .staged {
+                print("   📋 Found staged message: \(message.id ?? "unknown")")
                 return true
             }
             
@@ -464,23 +484,31 @@ class ChatViewModel: ObservableObject {
                 // Check ImageUploadManager for retry count
                 if let messageID = message.id,
                    case .failed(_, let retryCount) = imageUploadManager.getState(for: messageID) {
+                    print("   ❌ Found failed message (retry \(retryCount)): \(messageID)")
                     return retryCount < 2  // Auto-retry once
                 }
+                print("   ❌ Found retryable message: \(message.id ?? "unknown")")
                 return true  // No image state, always retry
             }
             
             // Stuck image uploads (sending but no URL)
             if message.status == .sending && message.mediaType == .image && message.mediaURL == nil {
+                print("   ⏸️ Found stuck image upload: \(message.id ?? "unknown")")
                 return true
             }
             
             return false
         }
         
+        print("   📊 Found \(messagesToRetry.count) messages to retry")
+        
         // Retry each message
         for message in messagesToRetry {
+            print("   🔁 Retrying message: \(message.id ?? "unknown")")
             await retryMessage(message)
         }
+        
+        print("   ✅ Retry complete")
     }
     
     /// Mark all messages as read

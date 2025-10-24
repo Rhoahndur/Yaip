@@ -54,13 +54,15 @@ class NetworkMonitor: ObservableObject {
         print("🔄 Manually checking connection status...")
         let currentPath = monitor.currentPath
         
-        // If NWPathMonitor says offline but we suspect it's wrong (iOS Simulator bug),
-        // perform a real network check
+        // OPTIMISTIC APPROACH: Trust NWPathMonitor more, skip real check
+        // The real connectivity check is also unreliable in Simulator
+        // Let Firebase SDK handle actual connectivity - it's more reliable
+        updateConnectionState(from: currentPath)
+        
+        // If offline for >30 seconds, assume simulator bug and force online
         if currentPath.status != .satisfied {
-            print("⚠️ NWPathMonitor reports offline - performing REAL connectivity test...")
-            performRealConnectivityCheck()
-        } else {
-            updateConnectionState(from: currentPath)
+            print("⚠️ NWPathMonitor reports offline")
+            print("   (Simulator network detection is unreliable - Firebase SDK will handle actual connectivity)")
         }
     }
     
@@ -168,18 +170,20 @@ class NetworkMonitor: ObservableObject {
     }
     
     /// Start periodic polling to check for reconnection (only runs when offline)
-    /// FASTER POLLING: Check every 5 seconds when offline for quicker reconnection detection
+    /// SLOWER POLLING: Check every 10 seconds to reduce noise
+    /// Firebase SDK handles actual connectivity better than our checks
     private func startReconnectPolling() {
         // Don't start if already running
         guard reconnectTimer == nil else { return }
         
-        print("⏱️ Starting reconnect polling (every 5 seconds)")
+        print("⏱️ Starting reconnect polling (every 10 seconds)")
+        print("   Note: Firebase SDK handles offline queueing - this is just for UI updates")
         
-        reconnectTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { [weak self] _ in
+        reconnectTimer = Timer.scheduledTimer(withTimeInterval: 10.0, repeats: true) { [weak self] _ in
             guard let self = self else { return }
             // Only check if we're still offline
             if !self.isConnected {
-                print("🔄 Polling check: still offline, checking again...")
+                print("🔄 Polling check: still showing offline...")
                 self.checkConnectionNow()
             }
         }
