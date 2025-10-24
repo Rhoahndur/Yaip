@@ -18,6 +18,7 @@ struct GroupMessageBubble: View {
     
     @ObservedObject private var imageUploadManager = ImageUploadManager.shared
     @State private var showingReadReceipts = false
+    @State private var isRetrying = false
     
     var body: some View {
         HStack {
@@ -82,21 +83,30 @@ struct GroupMessageBubble: View {
                                         ProgressView(value: progress)
                                             .scaleEffect(0.7)
                                             .tint(.white)
-                                        Text("Uploading...")
+                                        Text(isRetrying ? "Retrying..." : "Uploading...")
                                             .font(.caption2)
                                             .foregroundStyle(.white)
                                     case .failed(_, let retryCount):
-                                        Image(systemName: "exclamationmark.circle.fill")
-                                            .foregroundStyle(.white)
-                                            .background(Circle().fill(Color.red).padding(-4))
-                                        Text(retryCount < 2 ? "Retrying..." : "Tap to retry")
-                                            .font(.caption2)
-                                            .foregroundStyle(.white)
+                                        if isRetrying {
+                                            ProgressView()
+                                                .scaleEffect(0.7)
+                                                .tint(.white)
+                                            Text("Retrying...")
+                                                .font(.caption2)
+                                                .foregroundStyle(.white)
+                                        } else {
+                                            Image(systemName: "exclamationmark.circle.fill")
+                                                .foregroundStyle(.white)
+                                                .background(Circle().fill(Color.red).padding(-4))
+                                            Text(retryCount >= 2 ? "Tap to retry" : "Sending...")
+                                                .font(.caption2)
+                                                .foregroundStyle(.white)
+                                        }
                                     default:
                                         ProgressView()
                                             .scaleEffect(0.7)
                                             .tint(.white)
-                                        Text("Sending...")
+                                        Text(isRetrying ? "Retrying..." : "Sending...")
                                             .font(.caption2)
                                             .foregroundStyle(.white)
                                     }
@@ -173,10 +183,29 @@ struct GroupMessageBubble: View {
         .padding(.vertical, 2)
         .contentShape(Rectangle()) // Make entire area tappable
         .onTapGesture {
+            // Check both message status AND ImageUploadManager state
+            let shouldRetry: Bool
+            if let messageID = message.id {
+                let imageState = imageUploadManager.getState(for: messageID)
+                shouldRetry = message.status == .failed || imageState.isRetryable
+            } else {
+                shouldRetry = message.status == .failed
+            }
+            
             // Priority: retry failed messages first
-            if message.status == .failed {
+            if shouldRetry && !isRetrying {
+                print("👆 Retry tapped for message: \(message.id ?? "unknown")")
+                isRetrying = true
                 onRetry?()
-            } else if isFromCurrentUser && conversation.type == .group {
+                
+                // Reset after delay to allow UI update
+                Task {
+                    try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+                    await MainActor.run {
+                        isRetrying = false
+                    }
+                }
+            } else if isFromCurrentUser && conversation.type == .group && !isRetrying {
                 // Show read receipts for your own messages in group chats
                 showingReadReceipts = true
             }
