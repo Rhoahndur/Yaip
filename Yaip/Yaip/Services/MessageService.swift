@@ -23,11 +23,17 @@ class MessageService {
             throw MessageError.invalidData
         }
         
+        // Create a copy with status set to .sent (it's now on the server)
+        var messageToSave = message
+        messageToSave.status = .sent
+        
+        print("💾 Saving message to Firestore with status: .sent")
+        
         try db.collection(Constants.Collections.conversations)
             .document(conversationID)
             .collection(Constants.Collections.messages)
             .document(messageID)
-            .setData(from: message)
+            .setData(from: messageToSave)
     }
     
     /// Fetch messages for a conversation
@@ -66,18 +72,67 @@ class MessageService {
     
     /// Mark messages as read
     func markMessagesAsRead(conversationID: String, messageIDs: [String], userID: String) async throws {
+        // Get conversation to know how many participants
+        let conversationDoc = try await db.collection(Constants.Collections.conversations)
+            .document(conversationID)
+            .getDocument()
+        
+        guard let conversationData = conversationDoc.data(),
+              let participants = conversationData["participants"] as? [String] else {
+            print("⚠️ Could not get conversation participants")
+            return
+        }
+        
         let batch = db.batch()
         
         for messageID in messageIDs {
-            let ref = db.collection(Constants.Collections.conversations)
+            let messageRef = db.collection(Constants.Collections.conversations)
                 .document(conversationID)
                 .collection(Constants.Collections.messages)
                 .document(messageID)
             
+            // Get current message to check sender and readBy
+            let messageDoc = try await messageRef.getDocument()
+            guard let messageData = messageDoc.data(),
+                  let senderID = messageData["senderID"] as? String else {
+                continue
+            }
+            
+            let currentReadBy = (messageData["readBy"] as? [String]) ?? []
+            
+            // Add current user to readBy
+            var newReadBy = currentReadBy
+            if !newReadBy.contains(userID) {
+                newReadBy.append(userID)
+            }
+            
+            // Determine new status based on who has read it
+            let newStatus: MessageStatus
+            
+            // Count how many participants (excluding sender) have read it
+            let nonSenderParticipants = participants.filter { $0 != senderID }
+            let nonSenderReaders = newReadBy.filter { $0 != senderID }
+            
+            if nonSenderReaders.count >= nonSenderParticipants.count {
+                // Everyone (except sender) has read it
+                newStatus = .read
+            } else if !newReadBy.isEmpty && newReadBy.contains(where: { $0 != senderID }) {
+                // At least one person (not sender) has seen it
+                newStatus = .delivered
+            } else {
+                // Keep current status
+                let currentStatus = messageData["status"] as? String ?? MessageStatus.sent.rawValue
+                newStatus = MessageStatus(rawValue: currentStatus) ?? .sent
+            }
+            
+            print("📖 Marking message \(messageID) as read by \(userID)")
+            print("   ReadBy: \(newReadBy.count)/\(participants.count) participants")
+            print("   Status: \(newStatus)")
+            
             batch.updateData([
                 "readBy": FieldValue.arrayUnion([userID]),
-                "status": MessageStatus.read.rawValue
-            ], forDocument: ref)
+                "status": newStatus.rawValue
+            ], forDocument: messageRef)
         }
         
         try await batch.commit()
