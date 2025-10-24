@@ -114,6 +114,19 @@ struct ConversationListView: View {
                     }
                 }
                 
+                // Manual connectivity check button (only show when offline)
+                if !networkMonitor.isConnected {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button {
+                            print("👆 User manually triggered connectivity check")
+                            networkMonitor.checkConnectionNow()
+                        } label: {
+                            Image(systemName: "arrow.clockwise")
+                                .foregroundStyle(.orange)
+                        }
+                    }
+                }
+                
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         showNewChat = true

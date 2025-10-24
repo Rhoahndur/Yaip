@@ -19,6 +19,7 @@ class NetworkMonitor: ObservableObject {
     private let monitor = NWPathMonitor()
     private let queue = DispatchQueue(label: "NetworkMonitor")
     private var reconnectTimer: Timer?
+    private var isPerformingRealCheck = false
     
     enum ConnectionType {
         case wifi
@@ -52,7 +53,65 @@ class NetworkMonitor: ObservableObject {
     func checkConnectionNow() {
         print("🔄 Manually checking connection status...")
         let currentPath = monitor.currentPath
-        updateConnectionState(from: currentPath)
+        
+        // If NWPathMonitor says offline but we suspect it's wrong (iOS Simulator bug),
+        // perform a real network check
+        if currentPath.status != .satisfied {
+            print("⚠️ NWPathMonitor reports offline - performing REAL connectivity test...")
+            performRealConnectivityCheck()
+        } else {
+            updateConnectionState(from: currentPath)
+        }
+    }
+    
+    /// Perform a REAL network check by attempting to reach Google's DNS
+    /// This bypasses NWPathMonitor's unreliable simulator detection
+    private func performRealConnectivityCheck() {
+        // Prevent multiple concurrent checks
+        guard !isPerformingRealCheck else {
+            print("⏳ Real check already in progress, skipping...")
+            return
+        }
+        
+        isPerformingRealCheck = true
+        
+        // Try to reach a reliable endpoint (Google DNS)
+        var request = URLRequest(url: URL(string: "https://dns.google")!)
+        request.httpMethod = "HEAD"
+        request.timeoutInterval = 3.0
+        
+        let task = URLSession.shared.dataTask(with: request) { [weak self] _, response, error in
+            guard let self = self else { return }
+            
+            DispatchQueue.main.async {
+                self.isPerformingRealCheck = false
+                
+                if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 {
+                    print("✅ REAL CHECK: Internet IS available (NWPathMonitor was wrong!)")
+                    // Force update to online
+                    if !self.isConnected {
+                        let oldState = self.isConnected
+                        self.isConnected = true
+                        self.connectionType = .wifi  // Assume WiFi for simulator
+                        print("📱 Updated NetworkMonitor.isConnected: \(oldState) → \(self.isConnected) (via real check)")
+                        self.stopReconnectPolling()
+                    }
+                } else {
+                    print("❌ REAL CHECK: Internet NOT available")
+                    print("   Error: \(error?.localizedDescription ?? "Unknown")")
+                    // Confirm offline state
+                    if self.isConnected {
+                        let oldState = self.isConnected
+                        self.isConnected = false
+                        self.connectionType = .unknown
+                        print("📱 Updated NetworkMonitor.isConnected: \(oldState) → \(self.isConnected) (via real check)")
+                        self.startReconnectPolling()
+                    }
+                }
+            }
+        }
+        
+        task.resume()
     }
     
     private func updateConnectionState(from path: NWPath) {
