@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import MarkdownUI
 
 struct ThreadSummaryView: View {
     @ObservedObject var viewModel: AIFeaturesViewModel
@@ -82,7 +81,7 @@ struct ThreadSummaryView: View {
                         .shadow(radius: 2)
 
                     } else if let error = viewModel.summaryError {
-                        ErrorView(error: error) {
+                        AIErrorView(error: error) {
                             viewModel.summarizeThread()
                         }
                     }
@@ -92,7 +91,7 @@ struct ThreadSummaryView: View {
                         VStack(spacing: 12) {
                             Button {
                                 // TODO: Share summary
-                                shareSum mary()
+                                shareSummary()
                             } label: {
                                 Label("Share Summary", systemImage: "square.and.arrow.up")
                                     .frame(maxWidth: .infinity)
@@ -148,7 +147,7 @@ struct ThreadSummaryView: View {
     }
 }
 
-struct ErrorView: View {
+struct AIErrorView: View {
     let error: String
     let retry: () -> Void
 

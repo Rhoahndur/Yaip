@@ -325,7 +325,7 @@ extension N8NService {
 
 // MARK: - Models
 
-struct AIRequest: Codable {
+struct AIRequest: Encodable {
     let feature: String
     let conversationID: String
     let userID: String

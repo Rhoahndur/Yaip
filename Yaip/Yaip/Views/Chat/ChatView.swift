@@ -27,7 +27,7 @@ struct ChatView: View {
         self.conversation = conversation
         self.scrollToMessageID = scrollToMessageID
         self._viewModel = StateObject(wrappedValue: ChatViewModel(conversation: conversation))
-        self._aiViewModel = StateObject(wrappedValue: AIFeaturesViewModel(conversationID: conversation.id))
+        self._aiViewModel = StateObject(wrappedValue: AIFeaturesViewModel(conversationID: conversation.id ?? ""))
     }
     
     var body: some View {
