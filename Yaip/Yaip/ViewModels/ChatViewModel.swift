@@ -114,10 +114,9 @@ class ChatViewModel: ObservableObject {
                             mergedMessages.append(localMsg)
                             continue
                         }
-                        // For synced states, use Firestore version BUT preserve readBy if Firestore is more up-to-date
-                        // This ensures read receipts update even if message is in .sent state locally
-                        var updatedMsg = firestoreMsg
-                        mergedMessages.append(updatedMsg)
+                        // For synced states, use Firestore version (it's the source of truth)
+                        // This ensures read receipts and status updates propagate
+                        mergedMessages.append(firestoreMsg)
                         continue
                     }
                     
