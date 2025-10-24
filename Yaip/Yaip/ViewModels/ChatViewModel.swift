@@ -147,6 +147,12 @@ class ChatViewModel: ObservableObject {
                     }
                 }
                 
+                // If we received messages but NetworkMonitor thinks we're offline, force a check
+                if !firestoreMessages.isEmpty && !self.networkMonitor.isConnected {
+                    print("⚠️ Received messages but NetworkMonitor thinks offline - forcing check")
+                    self.networkMonitor.checkConnectionNow()
+                }
+                
                 // Save Firestore messages to local storage
                 for message in firestoreMessages {
                     // Log image messages
@@ -314,6 +320,12 @@ class ChatViewModel: ObservableObject {
             if let index = messages.firstIndex(where: { $0.id == messageID }) {
                 messages[index].status = .sent
                 try? localStorage.markMessageSynced(id: messageID)
+            }
+            
+            // If message sent successfully but NetworkMonitor thinks we're offline, force a check
+            if !networkMonitor.isConnected {
+                print("⚠️ Message sent successfully but NetworkMonitor thinks offline - forcing check")
+                networkMonitor.checkConnectionNow()
             }
             
             // Update conversation last message
