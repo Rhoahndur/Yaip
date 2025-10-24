@@ -18,6 +18,7 @@ class NetworkMonitor: ObservableObject {
     
     private let monitor = NWPathMonitor()
     private let queue = DispatchQueue(label: "NetworkMonitor")
+    private var reconnectTimer: Timer?
     
     enum ConnectionType {
         case wifi
@@ -79,14 +80,45 @@ class NetworkMonitor: ObservableObject {
             
             if newConnectionState {
                 print("✅ ONLINE via \(newConnectionType)")
+                // Stop polling timer when we're back online
+                self.stopReconnectPolling()
             } else {
                 print("❌ OFFLINE - No network available")
+                // Start polling timer to periodically check for reconnection
+                self.startReconnectPolling()
             }
         }
     }
     
     func stopMonitoring() {
         monitor.cancel()
+        stopReconnectPolling()
+    }
+    
+    /// Start periodic polling to check for reconnection (only runs when offline)
+    private func startReconnectPolling() {
+        // Don't start if already running
+        guard reconnectTimer == nil else { return }
+        
+        print("⏱️ Starting reconnect polling (every 15 seconds)")
+        
+        reconnectTimer = Timer.scheduledTimer(withTimeInterval: 15.0, repeats: true) { [weak self] _ in
+            guard let self = self else { return }
+            // Only check if we're still offline
+            if !self.isConnected {
+                print("🔄 Polling check: still offline, checking again...")
+                self.checkConnectionNow()
+            }
+        }
+    }
+    
+    /// Stop periodic polling (called when we detect online)
+    private func stopReconnectPolling() {
+        if reconnectTimer != nil {
+            print("⏹️ Stopping reconnect polling - we're online!")
+            reconnectTimer?.invalidate()
+            reconnectTimer = nil
+        }
     }
     
     private func getConnectionType(from path: NWPath) -> ConnectionType {
