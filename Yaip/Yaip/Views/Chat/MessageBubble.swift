@@ -36,11 +36,30 @@ struct MessageBubble: View {
                                         .resizable()
                                         .scaledToFit()
                                         .frame(maxWidth: 250)
-                                case .failure:
-                                    Image(systemName: "photo")
-                                        .font(.largeTitle)
-                                        .foregroundStyle(.secondary)
-                                        .frame(width: 250, height: 200)
+                                        .onAppear {
+                                            print("✅ Image loaded successfully: \(mediaURL)")
+                                        }
+                                case .failure(let error):
+                                    VStack(spacing: 8) {
+                                        Image(systemName: "exclamationmark.triangle")
+                                            .font(.system(size: 40))
+                                            .foregroundStyle(.red)
+                                        Text("Failed to load image")
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                        Text("URL: \(mediaURL.prefix(50))...")
+                                            .font(.system(size: 8))
+                                            .foregroundStyle(.secondary)
+                                            .multilineTextAlignment(.center)
+                                    }
+                                    .frame(width: 250, height: 200)
+                                    .background(Color(.systemGray6))
+                                    .onAppear {
+                                        print("❌ Image load failed for message \(message.id ?? "unknown")")
+                                        print("   URL: \(mediaURL)")
+                                        print("   Error: \(error)")
+                                        print("   Message status: \(message.status)")
+                                    }
                                 @unknown default:
                                     EmptyView()
                                 }

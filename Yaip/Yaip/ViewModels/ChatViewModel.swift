@@ -150,6 +150,14 @@ class ChatViewModel: ObservableObject {
                 
                 // Save Firestore messages to local storage
                 for message in firestoreMessages {
+                    // Log image messages
+                    if message.mediaType == .image {
+                        print("📥 Received image message from Firestore:")
+                        print("   ID: \(message.id ?? "unknown")")
+                        print("   MediaURL: \(message.mediaURL ?? "none")")
+                        print("   Status: \(message.status)")
+                    }
+                    
                     try? self.localStorage.saveMessage(message)
                     // Delete cached image once uploaded
                     if message.mediaURL != nil, let id = message.id {
@@ -272,6 +280,7 @@ class ChatViewModel: ObservableObject {
                         messages[index].mediaURL = url
                         newMessage.mediaURL = url
                         try? localStorage.saveMessage(messages[index])
+                        print("✅ Image URL assigned to message: \(url)")
                     }
                 } else {
                     // Upload failed - mark as failed
@@ -295,6 +304,11 @@ class ChatViewModel: ObservableObject {
         }
         
         do {
+            print("📤 Sending message to Firestore:")
+            print("   ID: \(messageID)")
+            print("   MediaURL: \(newMessage.mediaURL ?? "none")")
+            print("   MediaType: \(String(describing: newMessage.mediaType))")
+            
             try await messageService.sendMessage(newMessage)
             
             // STAGE 4: Mark as sent (will be confirmed by listener → .delivered/.read)
