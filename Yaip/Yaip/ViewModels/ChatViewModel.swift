@@ -114,7 +114,11 @@ class ChatViewModel: ObservableObject {
                             mergedMessages.append(localMsg)
                             continue
                         }
-                        // Otherwise, use Firestore version (it's the source of truth for synced states)
+                        // For synced states, use Firestore version BUT preserve readBy if Firestore is more up-to-date
+                        // This ensures read receipts update even if message is in .sent state locally
+                        var updatedMsg = firestoreMsg
+                        mergedMessages.append(updatedMsg)
+                        continue
                     }
                     
                     // Use Firestore version
@@ -167,7 +171,13 @@ class ChatViewModel: ObservableObject {
                 
                 if !unreadFromOthers.isEmpty {
                     print("📖 Auto-marking \(unreadFromOthers.count) new messages as read")
-                    self.markAsRead()
+                    // Small delay to ensure UI has updated
+                    Task {
+                        try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 second
+                        await MainActor.run {
+                            self.markAsRead()
+                        }
+                    }
                 }
             }
         }
@@ -418,7 +428,12 @@ class ChatViewModel: ObservableObject {
                 .filter { !$0.readBy.contains(currentUserID) }
                 .compactMap { $0.id }
             
-            guard !unreadMessageIDs.isEmpty else { return }
+            guard !unreadMessageIDs.isEmpty else { 
+                print("📖 No unread messages to mark")
+                return 
+            }
+            
+            print("📖 Marking \(unreadMessageIDs.count) messages as read: \(unreadMessageIDs)")
             
             do {
                 try await messageService.markMessagesAsRead(
@@ -426,8 +441,26 @@ class ChatViewModel: ObservableObject {
                     messageIDs: unreadMessageIDs,
                     userID: currentUserID
                 )
+                
+                // Immediately update local state to reflect read status
+                await MainActor.run {
+                    for id in unreadMessageIDs {
+                        if let index = self.messages.firstIndex(where: { $0.id == id }) {
+                            // Add current user to readBy if not already there
+                            if !self.messages[index].readBy.contains(currentUserID) {
+                                self.messages[index].readBy.append(currentUserID)
+                            }
+                            // Update status to .read if it's in a synced state
+                            if self.messages[index].status.isSynced {
+                                self.messages[index].status = .read
+                            }
+                        }
+                    }
+                }
+                
+                print("✅ Successfully marked messages as read")
             } catch {
-                print("Error marking messages as read: \(error.localizedDescription)")
+                print("❌ Error marking messages as read: \(error.localizedDescription)")
             }
         }
     }
