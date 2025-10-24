@@ -40,7 +40,7 @@ class NetworkMonitor: ObservableObject {
             let newConnectionType = self.getConnectionType(from: path)
             
             print("🌐 Network status changed:")
-            print("   Status: \(path.status) (raw: \(path.status.rawValue))")
+            print("   Status: \(path.status)")
             print("   isExpensive: \(path.isExpensive)")
             print("   isConstrained: \(path.isConstrained)")
             print("   Connected: \(newConnectionState)")
