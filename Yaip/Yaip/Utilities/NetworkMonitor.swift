@@ -40,21 +40,33 @@ class NetworkMonitor: ObservableObject {
             let newConnectionType = self.getConnectionType(from: path)
             
             print("🌐 Network status changed:")
-            print("   Status: \(path.status)")
+            print("   Status: \(path.status) (raw: \(path.status.rawValue))")
+            print("   isExpensive: \(path.isExpensive)")
+            print("   isConstrained: \(path.isConstrained)")
             print("   Connected: \(newConnectionState)")
             print("   Type: \(newConnectionType)")
-            print("   Available interfaces: \(path.availableInterfaces)")
+            print("   Available interfaces: \(path.availableInterfaces.map { $0.name })")
+            print("   WiFi available: \(path.usesInterfaceType(.wifi))")
+            print("   Ethernet available: \(path.usesInterfaceType(.wiredEthernet))")
+            print("   Cellular available: \(path.usesInterfaceType(.cellular))")
             
             DispatchQueue.main.async {
                 // Always update (let @Published handle change notification)
+                let oldState = self.isConnected
                 self.isConnected = newConnectionState
                 self.connectionType = newConnectionType
                 
-                print("📱 Updated NetworkMonitor.isConnected = \(self.isConnected)")
+                print("📱 Updated NetworkMonitor.isConnected: \(oldState) → \(self.isConnected)")
+                
+                if newConnectionState {
+                    print("✅ ONLINE via \(newConnectionType)")
+                } else {
+                    print("❌ OFFLINE - No network available")
+                }
             }
         }
         monitor.start(queue: queue)
-        print("🔍 Network monitoring started")
+        print("🔍 Network monitoring started with initial state: isConnected = \(isConnected)")
     }
     
     func stopMonitoring() {
