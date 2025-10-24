@@ -1,0 +1,180 @@
+//
+//  ThreadSummaryView.swift
+//  Yaip
+//
+//  View for displaying AI-generated thread summaries
+//
+
+import SwiftUI
+import MarkdownUI
+
+struct ThreadSummaryView: View {
+    @ObservedObject var viewModel: AIFeaturesViewModel
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    // Header
+                    HStack {
+                        Image(systemName: "sparkles")
+                            .font(.title2)
+                            .foregroundStyle(.purple)
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("AI Summary")
+                                .font(.title3)
+                                .fontWeight(.bold)
+
+                            if let summary = viewModel.currentSummary {
+                                Text("Analyzed \(summary.messageCount) messages")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+
+                        Spacer()
+                    }
+                    .padding()
+                    .background(Color.purple.opacity(0.1))
+                    .cornerRadius(12)
+
+                    // Summary content
+                    if viewModel.isLoadingSummary {
+                        VStack(spacing: 16) {
+                            ProgressView()
+                            Text("AI is analyzing the conversation...")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 40)
+
+                    } else if let summary = viewModel.currentSummary {
+                        // Use Markdown rendering for rich formatting
+                        VStack(alignment: .leading, spacing: 16) {
+                            Text(summary.summary)
+                                .font(.body)
+
+                            // Metadata
+                            Divider()
+
+                            HStack {
+                                Label {
+                                    Text("Confidence: \(Int(summary.confidence * 100))%")
+                                } icon: {
+                                    Image(systemName: "checkmark.seal.fill")
+                                        .foregroundStyle(.green)
+                                }
+                                .font(.caption)
+
+                                Spacer()
+
+                                Text(summary.timestamp.formatted(date: .abbreviated, time: .shortened))
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        .padding()
+                        .background(Color(.systemBackground))
+                        .cornerRadius(12)
+                        .shadow(radius: 2)
+
+                    } else if let error = viewModel.summaryError {
+                        ErrorView(error: error) {
+                            viewModel.summarizeThread()
+                        }
+                    }
+
+                    // Actions
+                    if viewModel.currentSummary != nil {
+                        VStack(spacing: 12) {
+                            Button {
+                                // TODO: Share summary
+                                shareSum mary()
+                            } label: {
+                                Label("Share Summary", systemImage: "square.and.arrow.up")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.bordered)
+
+                            Button {
+                                // TODO: Save to notes
+                                print("Save to notes")
+                            } label: {
+                                Label("Save to Notes", systemImage: "note.text")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.bordered)
+                        }
+                    }
+                }
+                .padding()
+            }
+            .navigationTitle("Summary")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+
+    private func shareSummary() {
+        guard let summary = viewModel.currentSummary else { return }
+
+        let text = """
+        Thread Summary (\(summary.messageCount) messages)
+
+        \(summary.summary)
+
+        Generated by Yaip AI • \(summary.timestamp.formatted())
+        """
+
+        let activityVC = UIActivityViewController(
+            activityItems: [text],
+            applicationActivities: nil
+        )
+
+        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let window = windowScene.windows.first,
+           let rootVC = window.rootViewController {
+            rootVC.present(activityVC, animated: true)
+        }
+    }
+}
+
+struct ErrorView: View {
+    let error: String
+    let retry: () -> Void
+
+    var body: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "exclamationmark.triangle")
+                .font(.system(size: 48))
+                .foregroundStyle(.red)
+
+            Text("Something went wrong")
+                .font(.headline)
+
+            Text(error)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+
+            Button(action: retry) {
+                Label("Try Again", systemImage: "arrow.clockwise")
+            }
+            .buttonStyle(.borderedProminent)
+        }
+        .padding()
+    }
+}
+
+#Preview {
+    ThreadSummaryView(viewModel: AIFeaturesViewModel(conversationID: "test-123"))
+}

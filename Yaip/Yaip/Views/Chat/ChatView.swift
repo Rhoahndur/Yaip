@@ -12,6 +12,7 @@ struct ChatView: View {
     let conversation: Conversation
     let scrollToMessageID: String?
     @StateObject private var viewModel: ChatViewModel
+    @StateObject private var aiViewModel: AIFeaturesViewModel
     @ObservedObject private var authManager = AuthManager.shared
     @ObservedObject private var networkMonitor = NetworkMonitor.shared
     @FocusState private var isTextFieldFocused: Bool
@@ -21,11 +22,12 @@ struct ChatView: View {
     @State private var statusListener: ListenerRegistration?
     @State private var hasScrolledToTarget = false
     @State private var displayName: String = ""
-    
+
     init(conversation: Conversation, scrollToMessageID: String? = nil) {
         self.conversation = conversation
         self.scrollToMessageID = scrollToMessageID
         self._viewModel = StateObject(wrappedValue: ChatViewModel(conversation: conversation))
+        self._aiViewModel = StateObject(wrappedValue: AIFeaturesViewModel(conversationID: conversation.id))
     }
     
     var body: some View {
@@ -185,15 +187,87 @@ struct ChatView: View {
         }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    showingDetail = true
-                } label: {
-                    Image(systemName: "info.circle")
+                HStack(spacing: 12) {
+                    // AI Features Menu
+                    Menu {
+                        Section("AI Assistant") {
+                            Button {
+                                aiViewModel.summarizeThread()
+                            } label: {
+                                Label("Summarize Thread", systemImage: "doc.text.magnifyingglass")
+                            }
+
+                            Button {
+                                aiViewModel.extractActionItems()
+                            } label: {
+                                Label("Extract Action Items", systemImage: "checkmark.circle")
+                            }
+
+                            Button {
+                                aiViewModel.suggestMeetingTimes()
+                            } label: {
+                                Label("Suggest Meeting Times", systemImage: "calendar.badge.clock")
+                            }
+                        }
+
+                        Section("Intelligence") {
+                            Button {
+                                aiViewModel.extractDecisions()
+                            } label: {
+                                Label("View Decisions", systemImage: "lightbulb")
+                            }
+
+                            Button {
+                                aiViewModel.detectPriority()
+                            } label: {
+                                Label("Detect Priority Messages", systemImage: "exclamationmark.triangle")
+                            }
+
+                            Button {
+                                aiViewModel.showSearch = true
+                            } label: {
+                                Label("Smart Search", systemImage: "magnifyingglass")
+                            }
+                        }
+                    } label: {
+                        ZStack {
+                            Image(systemName: "sparkles")
+                                .foregroundStyle(.purple)
+
+                            // Show badge if AI is processing
+                            if aiViewModel.isLoadingSummary || aiViewModel.isLoadingActionItems || aiViewModel.isLoadingMeeting {
+                                Circle()
+                                    .fill(.purple)
+                                    .frame(width: 8, height: 8)
+                                    .offset(x: 8, y: -8)
+                            }
+                        }
+                    }
+
+                    Button {
+                        showingDetail = true
+                    } label: {
+                        Image(systemName: "info.circle")
+                    }
                 }
             }
         }
         .sheet(isPresented: $showingDetail) {
             ChatDetailView(conversation: conversation)
+        }
+        // AI Feature Sheets
+        .sheet(isPresented: $aiViewModel.showSummary) {
+            ThreadSummaryView(viewModel: aiViewModel)
+        }
+        .sheet(isPresented: $aiViewModel.showActionItems) {
+            ActionItemsView(viewModel: aiViewModel) { messageID in
+                // Jump to message in chat
+                // TODO: Implement scroll to message
+                print("Jump to message: \(messageID)")
+            }
+        }
+        .sheet(isPresented: $aiViewModel.showMeetingSuggestion) {
+            MeetingSuggestionsView(viewModel: aiViewModel)
         }
         .networkStateBanner()
         .onNetworkReconnect {
