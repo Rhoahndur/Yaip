@@ -90,6 +90,15 @@ class ConversationService {
             .document(conversationID)
             .delete()
     }
+
+    /// Mark conversation as read for a specific user (reset unread count to 0)
+    func markAsRead(conversationID: String, userID: String) async throws {
+        try await db.collection(Constants.Collections.conversations)
+            .document(conversationID)
+            .updateData([
+                "unreadCount.\(userID)": 0
+            ])
+    }
 }
 
 enum ConversationError: LocalizedError {

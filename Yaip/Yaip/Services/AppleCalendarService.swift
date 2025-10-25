@@ -7,6 +7,7 @@
 
 import Foundation
 import EventKit
+import Combine
 
 /// Service for accessing Apple Calendar (EventKit) to check availability
 @MainActor

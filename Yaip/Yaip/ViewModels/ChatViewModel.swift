@@ -419,6 +419,7 @@ class ChatViewModel: ObservableObject {
                 mediaURL = await imageUploadManager.retryUpload(for: messageID, conversationID: conversationID)
             default:
                 // print("   Image state not retryable: \(imageState)")
+                break
             }
             
             if let url = mediaURL {

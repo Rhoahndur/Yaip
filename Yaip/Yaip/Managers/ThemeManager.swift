@@ -7,6 +7,7 @@
 
 import Foundation
 import SwiftUI
+import Combine
 
 /// App theme options
 enum AppTheme: String, CaseIterable, Identifiable {

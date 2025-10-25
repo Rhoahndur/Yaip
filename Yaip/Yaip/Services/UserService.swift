@@ -69,7 +69,7 @@ class UserService {
         }
 
         if let photoURL = photoURL {
-            updates["photoURL"] = photoURL
+            updates["profileImageURL"] = photoURL
         }
 
         guard !updates.isEmpty else { return }

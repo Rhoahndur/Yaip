@@ -20,8 +20,8 @@ struct SettingsView: View {
                     NavigationLink(destination: ProfileSettingsView()) {
                         HStack(spacing: 16) {
                             // Profile photo
-                            if let photoURL = authManager.currentUser?.photoURL,
-                               let url = URL(string: photoURL) {
+                            if let profileImageURL = authManager.currentUser?.profileImageURL,
+                               let url = URL(string: profileImageURL) {
                                 AsyncImage(url: url) { image in
                                     image
                                         .resizable()

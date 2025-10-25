@@ -35,8 +35,8 @@ struct ProfileSettingsView: View {
                                     .scaledToFill()
                                     .frame(width: 120, height: 120)
                                     .clipShape(Circle())
-                            } else if let photoURL = authManager.currentUser?.photoURL,
-                                      let url = URL(string: photoURL) {
+                            } else if let profileImageURL = authManager.currentUser?.profileImageURL,
+                                      let url = URL(string: profileImageURL) {
                                 AsyncImage(url: url) { image in
                                     image
                                         .resizable()
