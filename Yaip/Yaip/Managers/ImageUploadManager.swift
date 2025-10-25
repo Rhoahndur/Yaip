@@ -68,14 +68,14 @@ class ImageUploadManager: ObservableObject {
     func uploadImage(for messageID: String, conversationID: String) async -> String? {
         // Check if already uploading
         guard !activeUploads.contains(messageID) else {
-            print("   ⏸️ Upload already in progress")
+            // print("   ⏸️ Upload already in progress")
             return nil
         }
         
         // OPTIMISTIC: Try upload regardless of network status
         // Firebase Storage SDK will handle offline behavior better than our check
         if !networkMonitor.isConnected {
-            print("   ⚠️ NetworkMonitor says offline, but trying upload anyway...")
+            // print("   ⚠️ NetworkMonitor says offline, but trying upload anyway...")
         }
         
         // Get cached image

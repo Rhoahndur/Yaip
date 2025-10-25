@@ -27,7 +27,7 @@ class MessageService {
         var messageToSave = message
         messageToSave.status = .sent
         
-        print("💾 Saving message to Firestore with status: .sent")
+        // print("💾 Saving message to Firestore with status: .sent")
         
         try db.collection(Constants.Collections.conversations)
             .document(conversationID)
@@ -79,7 +79,7 @@ class MessageService {
         
         guard let conversationData = conversationDoc.data(),
               let participants = conversationData["participants"] as? [String] else {
-            print("⚠️ Could not get conversation participants")
+            // print("⚠️ Could not get conversation participants")
             return
         }
         
@@ -125,9 +125,9 @@ class MessageService {
                 newStatus = MessageStatus(rawValue: currentStatus) ?? .sent
             }
             
-            print("📖 Marking message \(messageID) as read by \(userID)")
-            print("   ReadBy: \(newReadBy.count)/\(participants.count) participants")
-            print("   Status: \(newStatus)")
+            // print("📖 Marking message \(messageID) as read by \(userID)")
+            // print("   ReadBy: \(newReadBy.count)/\(participants.count) participants")
+            // print("   Status: \(newStatus)")
             
             batch.updateData([
                 "readBy": FieldValue.arrayUnion([userID]),
@@ -232,7 +232,7 @@ class MessageService {
             "reactions": message.reactions
         ])
 
-        print("✅ Toggled reaction \(emoji) for message \(messageID)")
+        // print("✅ Toggled reaction \(emoji) for message \(messageID)")
     }
 
     // MARK: - Message Deletion
@@ -250,7 +250,7 @@ class MessageService {
             "text": "[Message deleted]" // Optional: replace text
         ])
 
-        print("✅ Deleted message \(messageID)")
+        // print("✅ Deleted message \(messageID)")
     }
 
     // MARK: - Reply to Message
@@ -269,7 +269,7 @@ class MessageService {
         newMessage.replyTo = messageID
 
         try await sendMessage(newMessage)
-        print("✅ Sent reply to message \(messageID)")
+        // print("✅ Sent reply to message \(messageID)")
     }
 }
 

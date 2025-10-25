@@ -95,6 +95,11 @@ struct ChatView: View {
                                     .background(
                                         isTargetMessage ? Color.yellow.opacity(0.3) : Color.clear
                                     )
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 12)
+                                            .stroke(isTargetMessage ? Color.orange : Color.clear, lineWidth: 3)
+                                            .shadow(color: isTargetMessage ? Color.orange.opacity(0.5) : Color.clear, radius: 8)
+                                    )
                                     .animation(.easeInOut(duration: 1.5).repeatCount(2, autoreverses: true), value: shouldAnimateHighlight)
                                 } else {
                                     MessageBubble(
@@ -109,6 +114,11 @@ struct ChatView: View {
                                     .id(message.id)
                                     .background(
                                         isTargetMessage ? Color.yellow.opacity(0.3) : Color.clear
+                                    )
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 12)
+                                            .stroke(isTargetMessage ? Color.orange : Color.clear, lineWidth: 3)
+                                            .shadow(color: isTargetMessage ? Color.orange.opacity(0.5) : Color.clear, radius: 8)
                                     )
                                     .animation(.easeInOut(duration: 1.5).repeatCount(2, autoreverses: true), value: shouldAnimateHighlight)
                                 }

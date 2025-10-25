@@ -41,7 +41,7 @@ class NetworkMonitor: ObservableObject {
             self.updateConnectionState(from: path)
         }
         monitor.start(queue: queue)
-        print("🔍 Network monitoring started with initial state: isConnected = \(isConnected)")
+        // print("🔍 Network monitoring started with initial state: isConnected = \(isConnected)")
         
         // Also check immediately to get current state
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
@@ -51,7 +51,7 @@ class NetworkMonitor: ObservableObject {
     
     /// Manually check connection status now (workaround for NWPathMonitor not always firing updates)
     func checkConnectionNow() {
-        print("🔄 Manually checking connection status...")
+        // print("🔄 Manually checking connection status...")
         let currentPath = monitor.currentPath
         
         // OPTIMISTIC APPROACH: Trust NWPathMonitor more, skip real check
@@ -61,8 +61,8 @@ class NetworkMonitor: ObservableObject {
         
         // If offline for >30 seconds, assume simulator bug and force online
         if currentPath.status != .satisfied {
-            print("⚠️ NWPathMonitor reports offline")
-            print("   (Simulator network detection is unreliable - Firebase SDK will handle actual connectivity)")
+            // print("⚠️ NWPathMonitor reports offline")
+            // print("   (Simulator network detection is unreliable - Firebase SDK will handle actual connectivity)")
         }
     }
     
@@ -103,7 +103,7 @@ class NetworkMonitor: ObservableObject {
                     }
                 } else {
                     print("❌ REAL CHECK: Internet NOT available")
-                    print("   Error: \(error?.localizedDescription ?? "Unknown")")
+                    // print("   Error: \(error?.localizedDescription ?? "Unknown")")
                     // Confirm offline state
                     if self.isConnected {
                         let oldState = self.isConnected
@@ -123,16 +123,16 @@ class NetworkMonitor: ObservableObject {
         let newConnectionState = path.status == .satisfied
         let newConnectionType = self.getConnectionType(from: path)
         
-        print("🌐 Network status changed:")
-        print("   Status: \(path.status)")
-        print("   isExpensive: \(path.isExpensive)")
-        print("   isConstrained: \(path.isConstrained)")
-        print("   Connected: \(newConnectionState)")
-        print("   Type: \(newConnectionType)")
-        print("   Available interfaces: \(path.availableInterfaces.map { $0.name })")
-        print("   WiFi available: \(path.usesInterfaceType(.wifi))")
-        print("   Ethernet available: \(path.usesInterfaceType(.wiredEthernet))")
-        print("   Cellular available: \(path.usesInterfaceType(.cellular))")
+        // print("🌐 Network status changed:")
+        // print("   Status: \(path.status)")
+        // print("   isExpensive: \(path.isExpensive)")
+        // print("   isConstrained: \(path.isConstrained)")
+        // print("   Connected: \(newConnectionState)")
+        // print("   Type: \(newConnectionType)")
+        // print("   Available interfaces: \(path.availableInterfaces.map { $0.name })")
+        // print("   WiFi available: \(path.usesInterfaceType(.wifi))")
+        // print("   Ethernet available: \(path.usesInterfaceType(.wiredEthernet))")
+        // print("   Cellular available: \(path.usesInterfaceType(.cellular))")
         
         DispatchQueue.main.async {
             // Always update (let @Published handle change notification)
@@ -140,7 +140,7 @@ class NetworkMonitor: ObservableObject {
             self.isConnected = newConnectionState
             self.connectionType = newConnectionType
             
-            print("📱 Updated NetworkMonitor.isConnected: \(oldState) → \(self.isConnected)")
+            // print("📱 Updated NetworkMonitor.isConnected: \(oldState) → \(self.isConnected)")
             
             // Detect transition from offline → online
             let wasOffline = oldState == false
@@ -176,8 +176,8 @@ class NetworkMonitor: ObservableObject {
         // Don't start if already running
         guard reconnectTimer == nil else { return }
         
-        print("⏱️ Starting reconnect polling (every 10 seconds)")
-        print("   Note: Firebase SDK handles offline queueing - this is just for UI updates")
+        // print("⏱️ Starting reconnect polling (every 10 seconds)")
+        // print("   Note: Firebase SDK handles offline queueing - this is just for UI updates")
         
         reconnectTimer = Timer.scheduledTimer(withTimeInterval: 10.0, repeats: true) { [weak self] _ in
             guard let self = self else { return }

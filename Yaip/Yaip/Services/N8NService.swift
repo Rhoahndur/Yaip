@@ -16,7 +16,7 @@ class N8NService {
         guard let url = Bundle.main.object(forInfoDictionaryKey: "N8N_WEBHOOK_URL") as? String,
               !url.isEmpty,
               url != "$(N8N_WEBHOOK_URL)" else {
-            print("⚠️ N8N_WEBHOOK_URL not configured in Config.xcconfig")
+            // print("⚠️ N8N_WEBHOOK_URL not configured in Config.xcconfig")
             return "https://your-n8n-instance.com/webhook"
         }
         return url
@@ -26,7 +26,7 @@ class N8NService {
         guard let token = Bundle.main.object(forInfoDictionaryKey: "N8N_AUTH_TOKEN") as? String,
               !token.isEmpty,
               token != "$(N8N_AUTH_TOKEN)" else {
-            print("⚠️ N8N_AUTH_TOKEN not configured in Config.xcconfig")
+            // print("⚠️ N8N_AUTH_TOKEN not configured in Config.xcconfig")
             return "your_secret_token_here"
         }
         return token
@@ -34,8 +34,8 @@ class N8NService {
 
     private init() {
         print("🔧 N8N Service initialized")
-        print("   Webhook URL: \(baseURL)")
-        print("   Auth Token: \(authToken.prefix(10))***")
+        // print("   Webhook URL: \(baseURL)")
+        // print("   Auth Token: \(authToken.prefix(10))***")
     }
 
     // MARK: - Thread Summarization
@@ -53,16 +53,16 @@ class N8NService {
 
         // PRODUCTION: Call real N8N webhook
         do {
-            print("📤 Calling N8N webhook for thread summary...")
-            print("   URL: \(baseURL)/summarize")
-            print("   Conversation ID: \(conversationID)")
-            print("   Message Count: \(messageCount)")
+            // print("📤 Calling N8N webhook for thread summary...")
+            // print("   URL: \(baseURL)/summarize")
+            // print("   Conversation ID: \(conversationID)")
+            // print("   Message Count: \(messageCount)")
 
             let response = try await callWebhook(request: request, responseType: ThreadSummaryResponse.self)
 
-            print("✅ Received summary from N8N")
-            print("   Success: \(response.success)")
-            print("   Message Count: \(response.messageCount)")
+            // print("✅ Received summary from N8N")
+            // print("   Success: \(response.success)")
+            // print("   Message Count: \(response.messageCount)")
 
             return ThreadSummary(
                 summary: response.summary,
@@ -72,7 +72,7 @@ class N8NService {
             )
         } catch {
             print("❌ N8N webhook error: \(error)")
-            print("   Falling back to mock data...")
+            // print("   Falling back to mock data...")
 
             // Fallback to mock if N8N fails (for testing)
             return try await mockSummarizeThread(conversationID: conversationID, messageCount: messageCount)
@@ -94,15 +94,15 @@ class N8NService {
 
         // PRODUCTION: Call real N8N webhook
         do {
-            print("📤 Calling N8N webhook for action items...")
-            print("   URL: \(baseURL)/extract_actions")
-            print("   Conversation ID: \(conversationID)")
+            // print("📤 Calling N8N webhook for action items...")
+            // print("   URL: \(baseURL)/extract_actions")
+            // print("   Conversation ID: \(conversationID)")
 
             let response = try await callWebhook(request: request, responseType: ActionItemsResponse.self)
 
-            print("✅ Received action items from N8N")
-            print("   Success: \(response.success)")
-            print("   Items found: \(response.actionItems.count)")
+            // print("✅ Received action items from N8N")
+            // print("   Success: \(response.success)")
+            // print("   Items found: \(response.actionItems.count)")
 
             // Convert response to ActionItem models
             let actionItems = response.actionItems.map { item in
@@ -121,7 +121,7 @@ class N8NService {
             return actionItems
         } catch {
             print("❌ N8N webhook error: \(error)")
-            print("   Falling back to mock data...")
+            // print("   Falling back to mock data...")
 
             // Fallback to mock if N8N fails (for testing)
             return try await mockExtractActionItems(conversationID: conversationID)
@@ -167,16 +167,16 @@ class N8NService {
 
         // PRODUCTION: Call real N8N webhook
         do {
-            print("📤 Calling N8N webhook for meeting suggestions...")
-            print("   URL: \(baseURL)/schedule_meeting")
-            print("   Conversation ID: \(conversationID)")
+            // print("📤 Calling N8N webhook for meeting suggestions...")
+            // print("   URL: \(baseURL)/schedule_meeting")
+            // print("   Conversation ID: \(conversationID)")
 
             let response = try await callWebhook(request: request, responseType: MeetingSuggestionResponse.self)
 
-            print("✅ Received meeting suggestions from N8N")
-            print("   Success: \(response.success)")
-            print("   Has intent: \(response.hasMeetingIntent)")
-            print("   Suggested times: \(response.suggestedTimes.count)")
+            // print("✅ Received meeting suggestions from N8N")
+            // print("   Success: \(response.success)")
+            // print("   Has intent: \(response.hasMeetingIntent)")
+            // print("   Suggested times: \(response.suggestedTimes.count)")
 
             // Convert response to MeetingSuggestion model
             let timeSlots = response.suggestedTimes.map { timeData in
@@ -197,7 +197,7 @@ class N8NService {
             )
         } catch {
             print("❌ N8N webhook error: \(error)")
-            print("   Falling back to mock data...")
+            // print("   Falling back to mock data...")
 
             // Fallback to mock if N8N fails (for testing)
             return try await mockSuggestMeetingTimes()
@@ -224,15 +224,15 @@ class N8NService {
 
         // PRODUCTION: Call real N8N webhook
         do {
-            print("📤 Calling N8N webhook for decision tracking...")
-            print("   URL: \(baseURL)/track_decisions")
-            print("   Conversation ID: \(conversationID)")
+            // print("📤 Calling N8N webhook for decision tracking...")
+            // print("   URL: \(baseURL)/track_decisions")
+            // print("   Conversation ID: \(conversationID)")
 
             let response = try await callWebhook(request: request, responseType: DecisionTrackingResponse.self)
 
-            print("✅ Received decisions from N8N")
-            print("   Success: \(response.success)")
-            print("   Decisions found: \(response.decisions.count)")
+            // print("✅ Received decisions from N8N")
+            // print("   Success: \(response.success)")
+            // print("   Decisions found: \(response.decisions.count)")
 
             // Convert response to Decision models
             let decisions = response.decisions.map { item in
@@ -252,7 +252,7 @@ class N8NService {
             return decisions
         } catch {
             print("❌ N8N webhook error: \(error)")
-            print("   Falling back to mock data...")
+            // print("   Falling back to mock data...")
 
             // Fallback to mock if N8N fails (for testing)
             return try await mockExtractDecisions()
@@ -293,15 +293,15 @@ class N8NService {
 
         // PRODUCTION: Call real N8N webhook
         do {
-            print("📤 Calling N8N webhook for priority detection...")
-            print("   URL: \(baseURL)/detect_priority")
-            print("   Conversation ID: \(conversationID)")
+            // print("📤 Calling N8N webhook for priority detection...")
+            // print("   URL: \(baseURL)/detect_priority")
+            // print("   Conversation ID: \(conversationID)")
 
             let response = try await callWebhook(request: request, responseType: PriorityDetectionResponse.self)
 
-            print("✅ Received priority messages from N8N")
-            print("   Success: \(response.success)")
-            print("   High priority messages found: \(response.priorityMessages.count)")
+            // print("✅ Received priority messages from N8N")
+            // print("   Success: \(response.success)")
+            // print("   High priority messages found: \(response.priorityMessages.count)")
 
             // Convert response to PriorityMessage models
             let priorityMessages = response.priorityMessages.map { item in
@@ -316,7 +316,7 @@ class N8NService {
             return priorityMessages
         } catch {
             print("❌ N8N webhook error: \(error)")
-            print("   Falling back to mock data...")
+            // print("   Falling back to mock data...")
 
             // Fallback to mock if N8N fails (for testing)
             return try await mockDetectPriority()
@@ -338,16 +338,16 @@ class N8NService {
 
         // PRODUCTION: Call real N8N webhook
         do {
-            print("📤 Calling N8N webhook for smart search...")
-            print("   URL: \(baseURL)/search")
-            print("   Query: \(query)")
-            print("   Conversation ID: \(conversationID)")
+            // print("📤 Calling N8N webhook for smart search...")
+            // print("   URL: \(baseURL)/search")
+            // print("   Query: \(query)")
+            // print("   Conversation ID: \(conversationID)")
 
             let response = try await callWebhook(request: request, responseType: SmartSearchResponse.self)
 
-            print("✅ Received search results from N8N")
-            print("   Success: \(response.success)")
-            print("   Results found: \(response.searchResults.count)")
+            // print("✅ Received search results from N8N")
+            // print("   Success: \(response.success)")
+            // print("   Results found: \(response.searchResults.count)")
 
             // Map enriched search results from N8N
             let searchResults = response.searchResults.map { item in
@@ -364,7 +364,7 @@ class N8NService {
             return searchResults
         } catch {
             print("❌ N8N webhook error: \(error)")
-            print("   Falling back to mock data...")
+            // print("   Falling back to mock data...")
 
             // Fallback to mock if N8N fails (for testing)
             return try await mockSearchMessages(query: query)
@@ -405,8 +405,8 @@ class N8NService {
 
         urlRequest.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
 
-        print("📡 Sending request to N8N...")
-        print("   Headers: Authorization: Bearer ***")
+        // print("📡 Sending request to N8N...")
+        // print("   Headers: Authorization: Bearer ***")
 
         let (data, response) = try await URLSession.shared.data(for: urlRequest)
 
@@ -415,7 +415,7 @@ class N8NService {
             throw N8NError.invalidResponse
         }
 
-        print("📥 Received response: \(httpResponse.statusCode)")
+        // print("📥 Received response: \(httpResponse.statusCode)")
 
         guard (200...299).contains(httpResponse.statusCode) else {
             if let errorString = String(data: data, encoding: .utf8) {
