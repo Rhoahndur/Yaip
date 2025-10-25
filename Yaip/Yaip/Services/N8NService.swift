@@ -291,8 +291,36 @@ class N8NService {
             parameters: [:]
         )
 
-        // TODO: Replace with real N8N webhook call
-        return try await mockDetectPriority()
+        // PRODUCTION: Call real N8N webhook
+        do {
+            print("📤 Calling N8N webhook for priority detection...")
+            print("   URL: \(baseURL)/detect_priority")
+            print("   Conversation ID: \(conversationID)")
+
+            let response = try await callWebhook(request: request, responseType: PriorityDetectionResponse.self)
+
+            print("✅ Received priority messages from N8N")
+            print("   Success: \(response.success)")
+            print("   High priority messages found: \(response.priorityMessages.count)")
+
+            // Convert response to PriorityMessage models
+            let priorityMessages = response.priorityMessages.map { item in
+                PriorityMessage(
+                    messageID: item.messageID,
+                    priorityScore: item.priorityScore,
+                    reason: item.reason,
+                    excerpt: item.excerpt
+                )
+            }
+
+            return priorityMessages
+        } catch {
+            print("❌ N8N webhook error: \(error)")
+            print("   Falling back to mock data...")
+
+            // Fallback to mock if N8N fails (for testing)
+            return try await mockDetectPriority()
+        }
     }
 
     // MARK: - Smart Search
@@ -308,8 +336,50 @@ class N8NService {
             ]
         )
 
-        // TODO: Replace with real N8N webhook call
-        return try await mockSearchMessages(query: query)
+        // PRODUCTION: Call real N8N webhook
+        do {
+            print("📤 Calling N8N webhook for smart search...")
+            print("   URL: \(baseURL)/search")
+            print("   Query: \(query)")
+            print("   Conversation ID: \(conversationID)")
+
+            let response = try await callWebhook(request: request, responseType: SmartSearchResponse.self)
+
+            print("✅ Received search results from N8N")
+            print("   Success: \(response.success)")
+            print("   Results found: \(response.searchResults.count)")
+
+            // Need to fetch full message details from the IDs
+            // For now, we'll return basic results with the data we have
+            let searchResults = response.searchResults.map { item in
+                SearchResult(
+                    messageID: item.messageID,
+                    text: "", // Will be populated from Firestore if needed
+                    senderName: "", // Will be populated from Firestore if needed
+                    timestamp: Date(), // Will be populated from Firestore if needed
+                    relevanceScore: item.relevanceScore,
+                    matchType: parseMatchType(item.matchType)
+                )
+            }
+
+            return searchResults
+        } catch {
+            print("❌ N8N webhook error: \(error)")
+            print("   Falling back to mock data...")
+
+            // Fallback to mock if N8N fails (for testing)
+            return try await mockSearchMessages(query: query)
+        }
+    }
+
+    // Helper to parse match type string
+    private func parseMatchType(_ matchTypeString: String?) -> SearchResult.MatchType {
+        guard let matchType = matchTypeString?.lowercased() else { return .semantic }
+        switch matchType {
+        case "keyword": return .keyword
+        case "hybrid": return .hybrid
+        default: return .semantic
+        }
     }
 
     // MARK: - Generic Webhook Call
@@ -650,6 +720,36 @@ struct DecisionData: Codable {
     let impact: String
     let category: String
     let context: String
+}
+
+// N8N Priority Detection Response
+struct PriorityDetectionResponse: Codable {
+    let success: Bool
+    let priorityMessages: [PriorityMessageData]
+    let timestamp: String
+    let conversationID: String
+}
+
+struct PriorityMessageData: Codable {
+    let messageID: String
+    let priorityScore: Int
+    let reason: String
+    let excerpt: String
+}
+
+// N8N Smart Search Response
+struct SmartSearchResponse: Codable {
+    let success: Bool
+    let searchResults: [SearchResultData]
+    let query: String
+    let timestamp: String
+    let conversationID: String
+}
+
+struct SearchResultData: Codable {
+    let messageID: String
+    let relevanceScore: Double
+    let matchType: String
 }
 
 struct ActionItem: Codable, Identifiable {

@@ -29,7 +29,17 @@ struct ChatView: View {
         self._viewModel = StateObject(wrappedValue: ChatViewModel(conversation: conversation))
         self._aiViewModel = StateObject(wrappedValue: AIFeaturesViewModel(conversationID: conversation.id ?? ""))
     }
-    
+
+    // Check if any AI feature is currently processing
+    private var isAIProcessing: Bool {
+        aiViewModel.isLoadingSummary ||
+        aiViewModel.isLoadingActionItems ||
+        aiViewModel.isLoadingMeeting ||
+        aiViewModel.isLoadingDecisions ||
+        aiViewModel.isLoadingPriority ||
+        aiViewModel.isSearching
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             // Messages list
@@ -192,18 +202,21 @@ struct ChatView: View {
                     Menu {
                         Section("AI Assistant") {
                             Button {
+                                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                                 aiViewModel.summarizeThread()
                             } label: {
                                 Label("Summarize Thread", systemImage: "doc.text.magnifyingglass")
                             }
 
                             Button {
+                                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                                 aiViewModel.extractActionItems()
                             } label: {
                                 Label("Extract Action Items", systemImage: "checkmark.circle")
                             }
 
                             Button {
+                                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                                 aiViewModel.suggestMeetingTimes()
                             } label: {
                                 Label("Suggest Meeting Times", systemImage: "calendar.badge.clock")
@@ -212,18 +225,21 @@ struct ChatView: View {
 
                         Section("Intelligence") {
                             Button {
+                                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                                 aiViewModel.extractDecisions()
                             } label: {
                                 Label("View Decisions", systemImage: "lightbulb")
                             }
 
                             Button {
+                                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                                 aiViewModel.detectPriority()
                             } label: {
                                 Label("Detect Priority Messages", systemImage: "exclamationmark.triangle")
                             }
 
                             Button {
+                                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                                 aiViewModel.showSearch = true
                             } label: {
                                 Label("Smart Search", systemImage: "magnifyingglass")
@@ -233,13 +249,17 @@ struct ChatView: View {
                         ZStack {
                             Image(systemName: "sparkles")
                                 .foregroundStyle(.purple)
+                                .scaleEffect(isAIProcessing ? 1.1 : 1.0)
+                                .animation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true), value: isAIProcessing)
 
-                            // Show badge if AI is processing
-                            if aiViewModel.isLoadingSummary || aiViewModel.isLoadingActionItems || aiViewModel.isLoadingMeeting {
+                            // Show pulsing badge if AI is processing
+                            if isAIProcessing {
                                 Circle()
                                     .fill(.purple)
                                     .frame(width: 8, height: 8)
                                     .offset(x: 8, y: -8)
+                                    .scaleEffect(isAIProcessing ? 1.2 : 1.0)
+                                    .animation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true), value: isAIProcessing)
                             }
                         }
                     }
@@ -274,6 +294,41 @@ struct ChatView: View {
                 // Jump to message in chat
                 // TODO: Implement scroll to message
                 print("Jump to message: \(messageID)")
+            }
+        }
+        .sheet(isPresented: $aiViewModel.showPriority) {
+            PriorityMessagesView(viewModel: aiViewModel) { messageID in
+                // Jump to message in chat
+                // TODO: Implement scroll to message
+                print("Jump to message: \(messageID)")
+            }
+        }
+        .sheet(isPresented: $aiViewModel.showSearch) {
+            SmartSearchView(viewModel: aiViewModel) { messageID in
+                // Jump to message in chat
+                // TODO: Implement scroll to message
+                print("Jump to message: \(messageID)")
+            }
+        }
+        .overlay(alignment: .top) {
+            if isAIProcessing {
+                HStack(spacing: 8) {
+                    ProgressView()
+                        .scaleEffect(0.8)
+                        .tint(.white)
+
+                    Text("AI is processing...")
+                        .font(.subheadline)
+                        .foregroundStyle(.white)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .background(.purple)
+                .cornerRadius(20)
+                .shadow(radius: 4)
+                .padding(.top, 8)
+                .transition(.move(edge: .top).combined(with: .opacity))
+                .animation(.easeInOut, value: isAIProcessing)
             }
         }
         .networkStateBanner()
