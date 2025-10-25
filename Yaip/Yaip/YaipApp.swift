@@ -13,23 +13,25 @@ import SwiftData
 struct YaipApp: App {
     @Environment(\.scenePhase) private var scenePhase
     @StateObject private var authManager = AuthManager.shared
-    
+    @StateObject private var themeManager = ThemeManager.shared
+
     init() {
         // Initialize Firebase
         FirebaseApp.configure()
-        
+
         // Initialize LocalStorageManager (SwiftData)
         _ = LocalStorageManager.shared
-        
+
         // Start network monitoring
         NetworkMonitor.shared.startMonitoring()
     }
-    
+
     var body: some Scene {
         WindowGroup {
             NavigationView {
                 ContentView()
             }
+            .preferredColorScheme(themeManager.currentTheme.colorScheme)
         }
         .onChange(of: scenePhase) { oldPhase, newPhase in
             handleScenePhaseChange(oldPhase, newPhase)

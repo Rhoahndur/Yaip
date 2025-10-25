@@ -15,11 +15,23 @@ class ConversationListViewModel: ObservableObject {
     @Published var conversations: [Conversation] = []
     @Published var isLoading = false
     @Published var errorMessage: String?
-    
+    @Published var showUnreadOnly: Bool = false
+
     nonisolated(unsafe) private var listener: ListenerRegistration?
     let conversationService = ConversationService.shared // Made public for NewChatView access
     let authManager = AuthManager.shared
     private let localStorage = LocalStorageManager.shared
+
+    /// Filtered conversations based on unread status
+    var filteredConversations: [Conversation] {
+        guard showUnreadOnly else { return conversations }
+        guard let currentUserID = authManager.currentUserID else { return conversations }
+
+        return conversations.filter { conversation in
+            let unreadCount = conversation.unreadCount[currentUserID] ?? 0
+            return unreadCount > 0
+        }
+    }
     
     /// Start listening to conversations in real-time
     func startListening() {
@@ -174,14 +186,36 @@ class ConversationListViewModel: ObservableObject {
     /// Delete a conversation
     func deleteConversation(_ conversation: Conversation) async {
         guard let conversationID = conversation.id else { return }
-        
+
         do {
             try await conversationService.deleteConversation(conversationID: conversationID)
         } catch {
             errorMessage = error.localizedDescription
         }
     }
-    
+
+    /// Toggle filter to show only unread conversations
+    func toggleFilterUnread() {
+        showUnreadOnly.toggle()
+    }
+
+    /// Mark all conversations as read for the current user
+    func markAllAsRead() async {
+        guard let currentUserID = authManager.currentUserID else { return }
+
+        for conversation in conversations {
+            guard let conversationID = conversation.id else { continue }
+            let unreadCount = conversation.unreadCount[currentUserID] ?? 0
+
+            if unreadCount > 0 {
+                try? await conversationService.markAsRead(
+                    conversationID: conversationID,
+                    userID: currentUserID
+                )
+            }
+        }
+    }
+
     deinit {
         stopListening()
     }

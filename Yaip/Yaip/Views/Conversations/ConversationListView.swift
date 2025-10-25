@@ -14,6 +14,8 @@ struct ConversationListView: View {
     @ObservedObject private var messageListener = MessageListenerService.shared
     @ObservedObject private var networkMonitor = NetworkMonitor.shared
     @State private var showNewChat = false
+    @State private var showSettings = false
+    @State private var showInviteFriends = false
     @State private var navigationPath = NavigationPath()
     @State private var scrollToMessageID: String? = nil
     
@@ -70,7 +72,7 @@ struct ConversationListView: View {
                         }
                         
                         List {
-                            ForEach(viewModel.conversations) { conversation in
+                            ForEach(viewModel.filteredConversations) { conversation in
                                 NavigationLink(value: conversation) {
                                     ConversationRow(
                                         conversation: conversation,
@@ -134,19 +136,63 @@ struct ConversationListView: View {
                         Image(systemName: "square.and.pencil")
                     }
                 }
-                
+
+                // Three-dot menu (Signal-style)
                 ToolbarItem(placement: .topBarLeading) {
-                    Button {
-                        Task {
-                            try? await authManager.signOut()
+                    Menu {
+                        // Filter section
+                        Section {
+                            Button {
+                                viewModel.toggleFilterUnread()
+                            } label: {
+                                Label(
+                                    viewModel.showUnreadOnly ? "Show All Chats" : "Filter Unread",
+                                    systemImage: viewModel.showUnreadOnly ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle"
+                                )
+                            }
+
+                            Button {
+                                Task {
+                                    await viewModel.markAllAsRead()
+                                }
+                            } label: {
+                                Label("Mark All Read", systemImage: "checkmark.circle")
+                            }
+                            .disabled(viewModel.conversations.isEmpty)
+                        }
+
+                        // Social section
+                        Section {
+                            Button {
+                                showInviteFriends = true
+                            } label: {
+                                Label("Invite Friends", systemImage: "person.2.fill")
+                            }
+                        }
+
+                        // Settings
+                        Section {
+                            Button {
+                                showSettings = true
+                            } label: {
+                                Label("Settings", systemImage: "gearshape")
+                            }
                         }
                     } label: {
-                        Image(systemName: "rectangle.portrait.and.arrow.right")
+                        Image(systemName: "ellipsis.circle")
                     }
                 }
             }
             .sheet(isPresented: $showNewChat) {
                 NewChatView()
+            }
+            .sheet(isPresented: $showSettings) {
+                SettingsView()
+            }
+            .sheet(isPresented: $showInviteFriends) {
+                NavigationStack {
+                    InviteFriendsView()
+                }
             }
             .onAppear {
                 viewModel.startListening()

@@ -60,6 +60,38 @@ class UserService {
         return users
     }
     
+    /// Update user profile (display name and/or photo URL)
+    func updateProfile(userID: String, displayName: String? = nil, photoURL: String? = nil) async throws {
+        var updates: [String: Any] = [:]
+
+        if let displayName = displayName {
+            updates["displayName"] = displayName
+        }
+
+        if let photoURL = photoURL {
+            updates["photoURL"] = photoURL
+        }
+
+        guard !updates.isEmpty else { return }
+
+        try await db.collection(Constants.Collections.users)
+            .document(userID)
+            .updateData(updates)
+
+        // Clear cache for this user
+        userCache.removeValue(forKey: userID)
+    }
+
+    /// Update display name only
+    func updateDisplayName(userID: String, displayName: String) async throws {
+        try await updateProfile(userID: userID, displayName: displayName)
+    }
+
+    /// Update profile photo only
+    func updateProfilePhoto(userID: String, photoURL: String) async throws {
+        try await updateProfile(userID: userID, photoURL: photoURL)
+    }
+
     /// Search users by display name
     func searchUsers(query: String) async throws -> [User] {
         // If query is empty, return all users
@@ -67,12 +99,12 @@ class UserService {
             let snapshot = try await db.collection(Constants.Collections.users)
                 .limit(to: 50)
                 .getDocuments()
-            
+
             return snapshot.documents.compactMap { doc in
                 try? doc.data(as: User.self)
             }
         }
-        
+
         // Search by display name (case-insensitive)
         let snapshot = try await db.collection(Constants.Collections.users)
             .whereField("displayName", isGreaterThanOrEqualTo: query)

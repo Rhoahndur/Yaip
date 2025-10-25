@@ -25,9 +25,19 @@ class AuthManager: ObservableObject {
     var currentUserID: String? {
         return Auth.auth().currentUser?.uid
     }
-    
+
+    var currentUser: User? {
+        return user
+    }
+
     private init() {
         setupAuthStateListener()
+    }
+
+    /// Refresh current user data from Firestore
+    func refreshCurrentUser() async {
+        guard let userID = currentUserID else { return }
+        fetchUserProfile(userID: userID)
     }
     
     /// Listen for authentication state changes

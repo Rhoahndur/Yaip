@@ -13,5 +13,7 @@
 	<string>$(N8N_WEBHOOK_URL)</string>
 	<key>N8N_AUTH_TOKEN</key>
 	<string>$(N8N_AUTH_TOKEN)</string>
+	<key>NSCalendarsUsageDescription</key>
+	<string>Yaip needs calendar access to suggest meeting times when you're available. We only check if you're busy or free, never read event details.</string>
 </dict>
 </plist>

@@ -135,18 +135,32 @@ class AIFeaturesViewModel: ObservableObject {
 
         Task {
             do {
-                let suggestion = try await n8nService.suggestMeetingTimes(
+                // Get AI-generated suggestions
+                var suggestion = try await n8nService.suggestMeetingTimes(
                     conversationID: conversationID,
                     context: context
                 )
 
+                // Enhance with Apple Calendar availability if authorized
+                if AppleCalendarService.shared.isAuthorized {
+                    let enrichedTimeSlots = AppleCalendarService.shared.checkAvailability(
+                        for: suggestion.suggestedTimes
+                    )
+
+                    // Update suggestion with calendar-aware time slots
+                    suggestion = MeetingSuggestion(
+                        detectedIntent: suggestion.detectedIntent,
+                        suggestedTimes: enrichedTimeSlots,
+                        duration: suggestion.duration,
+                        participants: suggestion.participants
+                    )
+                }
+
                 self.meetingSuggestion = suggestion
                 self.showMeetingSuggestion = true
-                print("✅ Generated meeting suggestions")
 
             } catch {
                 self.meetingError = error.localizedDescription
-                print("❌ Meeting suggestion error: \(error)")
             }
 
             self.isLoadingMeeting = false

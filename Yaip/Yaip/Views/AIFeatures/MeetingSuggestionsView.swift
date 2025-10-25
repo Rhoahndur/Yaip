@@ -46,25 +46,68 @@ struct MeetingSuggestionsView: View {
     }
 
     private var headerSection: some View {
-        HStack {
-            Image(systemName: "calendar.badge.clock")
-                .font(.title2)
-                .foregroundStyle(.blue)
+        VStack(spacing: 12) {
+            HStack {
+                Image(systemName: "calendar.badge.clock")
+                    .font(.title2)
+                    .foregroundStyle(.blue)
 
-            VStack(alignment: .leading, spacing: 4) {
-                Text("AI Meeting Scheduler")
-                    .font(.title3)
-                    .fontWeight(.bold)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("AI Meeting Scheduler")
+                        .font(.title3)
+                        .fontWeight(.bold)
 
-                Text("Smart scheduling based on conversation context")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    Text("Smart scheduling based on conversation context")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
             }
 
-            Spacer()
+            // Calendar integration status
+            if AppleCalendarService.shared.isAuthorized {
+                HStack(spacing: 8) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(.green)
+                        .font(.caption)
+
+                    Text("Enhanced with your calendar availability")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                    Spacer()
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(Color.green.opacity(0.1))
+                .cornerRadius(8)
+            } else {
+                HStack(spacing: 8) {
+                    Image(systemName: "info.circle.fill")
+                        .foregroundStyle(.blue)
+                        .font(.caption)
+
+                    Text("Connect your calendar for smarter suggestions")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                    Spacer()
+
+                    NavigationLink(destination: CalendarSettingsView()) {
+                        Text("Connect")
+                            .font(.caption)
+                            .fontWeight(.semibold)
+                    }
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(Color.blue.opacity(0.1))
+                .cornerRadius(8)
+            }
         }
         .padding()
-        .background(Color.blue.opacity(0.1))
+        .background(Color.blue.opacity(0.05))
         .cornerRadius(12)
     }
 
@@ -137,6 +180,17 @@ struct TimeSlotCard: View {
     let number: Int
     let onSelect: () -> Void
 
+    private var isFullyAvailable: Bool {
+        timeSlot.conflicts.isEmpty && (timeSlot.isUserFree ?? true)
+    }
+
+    private var cardColor: Color {
+        if let isUserFree = timeSlot.isUserFree, !isUserFree {
+            return .red
+        }
+        return timeSlot.conflicts.isEmpty ? .green : .orange
+    }
+
     var body: some View {
         Button(action: onSelect) {
             VStack(spacing: 12) {
@@ -147,7 +201,7 @@ struct TimeSlotCard: View {
                         .fontWeight(.bold)
                         .foregroundStyle(.white)
                         .frame(width: 32, height: 32)
-                        .background(timeSlot.conflicts.isEmpty ? Color.green : Color.orange)
+                        .background(cardColor)
                         .clipShape(Circle())
 
                     VStack(alignment: .leading, spacing: 4) {
@@ -161,9 +215,14 @@ struct TimeSlotCard: View {
 
                     Spacer()
 
-                    if timeSlot.conflicts.isEmpty {
+                    // Status icon
+                    if isFullyAvailable {
                         Image(systemName: "checkmark.circle.fill")
                             .foregroundStyle(.green)
+                            .font(.title3)
+                    } else if let isUserFree = timeSlot.isUserFree, !isUserFree {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(.red)
                             .font(.title3)
                     } else {
                         Image(systemName: "exclamationmark.triangle.fill")
@@ -174,25 +233,48 @@ struct TimeSlotCard: View {
 
                 Divider()
 
-                // Availability
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Available")
+                // Your availability (from Apple Calendar)
+                if let isUserFree = timeSlot.isUserFree {
+                    HStack {
+                        Image(systemName: "calendar")
+                            .font(.caption)
+                            .foregroundStyle(isUserFree ? .green : .red)
+
+                        Text("You:")
                             .font(.caption)
                             .fontWeight(.semibold)
                             .foregroundStyle(.secondary)
 
-                        Text(timeSlot.available.joined(separator: ", "))
+                        Text(isUserFree ? "Free" : "Busy")
                             .font(.caption)
-                    }
+                            .fontWeight(.semibold)
+                            .foregroundStyle(isUserFree ? .green : .red)
 
-                    Spacer()
+                        Spacer()
+                    }
+                }
+
+                // Team availability
+                if !timeSlot.available.isEmpty {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Team Available")
+                                .font(.caption)
+                                .fontWeight(.semibold)
+                                .foregroundStyle(.secondary)
+
+                            Text(timeSlot.available.joined(separator: ", "))
+                                .font(.caption)
+                        }
+
+                        Spacer()
+                    }
                 }
 
                 if !timeSlot.conflicts.isEmpty {
                     HStack {
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("Conflicts")
+                            Text("Team Conflicts")
                                 .font(.caption)
                                 .fontWeight(.semibold)
                                 .foregroundStyle(.secondary)
@@ -212,7 +294,7 @@ struct TimeSlotCard: View {
             .shadow(radius: 2)
             .overlay(
                 RoundedRectangle(cornerRadius: 12)
-                    .stroke(timeSlot.conflicts.isEmpty ? Color.green.opacity(0.3) : Color.orange.opacity(0.3), lineWidth: 2)
+                    .stroke(cardColor.opacity(0.3), lineWidth: 2)
             )
         }
         .buttonStyle(.plain)

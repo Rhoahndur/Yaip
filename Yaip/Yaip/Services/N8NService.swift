@@ -787,6 +787,19 @@ struct TimeSlot: Codable, Identifiable {
     let endTime: String
     let available: [String]
     let conflicts: [String]
+    var source: CalendarSource = .ai
+    var isUserFree: Bool? = nil // From Apple Calendar check
+
+    enum CodingKeys: String, CodingKey {
+        case date, startTime, endTime, available, conflicts
+    }
+}
+
+enum CalendarSource: String, Codable {
+    case ai = "ai"
+    case appleCalendar = "apple"
+    case googleCalendar = "google"
+    case outlook = "outlook"
 }
 
 struct Decision: Codable, Identifiable {
