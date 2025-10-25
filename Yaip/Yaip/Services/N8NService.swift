@@ -349,14 +349,13 @@ class N8NService {
             print("   Success: \(response.success)")
             print("   Results found: \(response.searchResults.count)")
 
-            // Need to fetch full message details from the IDs
-            // For now, we'll return basic results with the data we have
+            // Map enriched search results from N8N
             let searchResults = response.searchResults.map { item in
                 SearchResult(
                     messageID: item.messageID,
-                    text: "", // Will be populated from Firestore if needed
-                    senderName: "", // Will be populated from Firestore if needed
-                    timestamp: Date(), // Will be populated from Firestore if needed
+                    text: item.text,
+                    senderName: item.senderName,
+                    timestamp: parseISODate(item.timestamp) ?? Date(),
                     relevanceScore: item.relevanceScore,
                     matchType: parseMatchType(item.matchType)
                 )
@@ -748,6 +747,9 @@ struct SmartSearchResponse: Codable {
 
 struct SearchResultData: Codable {
     let messageID: String
+    let text: String
+    let senderName: String
+    let timestamp: String
     let relevanceScore: Double
     let matchType: String
 }

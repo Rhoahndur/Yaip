@@ -22,6 +22,9 @@ struct ChatView: View {
     @State private var statusListener: ListenerRegistration?
     @State private var hasScrolledToTarget = false
     @State private var displayName: String = ""
+    @State private var highlightedMessageID: String?
+    @State private var shouldAnimateHighlight = false
+    @State private var scrollProxy: ScrollViewProxy?
 
     init(conversation: Conversation, scrollToMessageID: String? = nil) {
         self.conversation = conversation
@@ -46,6 +49,12 @@ struct ChatView: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(spacing: 8) {
+                        Color.clear
+                            .frame(height: 0)
+                            .onAppear {
+                                // Capture the scroll proxy for later use
+                                scrollProxy = proxy
+                            }
                         if viewModel.isLoading && viewModel.messages.isEmpty {
                             ProgressView()
                                 .padding()
@@ -67,8 +76,8 @@ struct ChatView: View {
                             .padding(.top, 100)
                         } else {
                             ForEach(viewModel.messages) { message in
-                                let isTargetMessage = message.id == scrollToMessageID
-                                
+                                let isTargetMessage = message.id == scrollToMessageID || message.id == highlightedMessageID
+
                                 if conversation.type == .group {
                                     GroupMessageBubble(
                                         message: message,
@@ -86,7 +95,7 @@ struct ChatView: View {
                                     .background(
                                         isTargetMessage ? Color.yellow.opacity(0.3) : Color.clear
                                     )
-                                    .animation(.easeInOut(duration: 1.5).repeatCount(2, autoreverses: true), value: hasScrolledToTarget)
+                                    .animation(.easeInOut(duration: 1.5).repeatCount(2, autoreverses: true), value: shouldAnimateHighlight)
                                 } else {
                                     MessageBubble(
                                         message: message,
@@ -101,7 +110,7 @@ struct ChatView: View {
                                     .background(
                                         isTargetMessage ? Color.yellow.opacity(0.3) : Color.clear
                                     )
-                                    .animation(.easeInOut(duration: 1.5).repeatCount(2, autoreverses: true), value: hasScrolledToTarget)
+                                    .animation(.easeInOut(duration: 1.5).repeatCount(2, autoreverses: true), value: shouldAnimateHighlight)
                                 }
                             }
                         }
@@ -281,9 +290,7 @@ struct ChatView: View {
         }
         .sheet(isPresented: $aiViewModel.showActionItems) {
             ActionItemsView(viewModel: aiViewModel) { messageID in
-                // Jump to message in chat
-                // TODO: Implement scroll to message
-                print("Jump to message: \(messageID)")
+                scrollToMessage(messageID)
             }
         }
         .sheet(isPresented: $aiViewModel.showMeetingSuggestion) {
@@ -291,23 +298,17 @@ struct ChatView: View {
         }
         .sheet(isPresented: $aiViewModel.showDecisions) {
             DecisionTrackingView(viewModel: aiViewModel) { messageID in
-                // Jump to message in chat
-                // TODO: Implement scroll to message
-                print("Jump to message: \(messageID)")
+                scrollToMessage(messageID)
             }
         }
         .sheet(isPresented: $aiViewModel.showPriority) {
             PriorityMessagesView(viewModel: aiViewModel) { messageID in
-                // Jump to message in chat
-                // TODO: Implement scroll to message
-                print("Jump to message: \(messageID)")
+                scrollToMessage(messageID)
             }
         }
         .sheet(isPresented: $aiViewModel.showSearch) {
             SmartSearchView(viewModel: aiViewModel) { messageID in
-                // Jump to message in chat
-                // TODO: Implement scroll to message
-                print("Jump to message: \(messageID)")
+                scrollToMessage(messageID)
             }
         }
         .overlay(alignment: .top) {
@@ -381,6 +382,27 @@ struct ChatView: View {
         }
     }
     
+    // Helper function to scroll to and highlight a message
+    private func scrollToMessage(_ messageID: String) {
+        guard let proxy = scrollProxy else { return }
+
+        // Set the highlighted message
+        highlightedMessageID = messageID
+
+        // Scroll to the message
+        withAnimation(.easeInOut(duration: 0.5)) {
+            proxy.scrollTo(messageID, anchor: .center)
+        }
+
+        // Trigger highlight animation
+        shouldAnimateHighlight.toggle()
+
+        // Clear highlight after animation completes
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+            highlightedMessageID = nil
+        }
+    }
+
     private func loadConversationName() {
         if conversation.type == .group {
             // For group chats, use the group name
