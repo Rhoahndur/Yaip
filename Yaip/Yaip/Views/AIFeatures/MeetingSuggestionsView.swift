@@ -69,13 +69,10 @@ struct MeetingSuggestionsView: View {
     }
 
     private var loadingView: some View {
-        VStack(spacing: 16) {
-            ProgressView()
-            Text("Analyzing conversation for scheduling needs...")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-        }
+        AILoadingView(
+            title: "Detecting scheduling intent",
+            subtitle: "AI is analyzing conversation for meeting suggestions..."
+        )
         .frame(maxWidth: .infinity)
         .padding(.vertical, 40)
     }

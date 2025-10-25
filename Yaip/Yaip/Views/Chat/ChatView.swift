@@ -269,6 +269,13 @@ struct ChatView: View {
         .sheet(isPresented: $aiViewModel.showMeetingSuggestion) {
             MeetingSuggestionsView(viewModel: aiViewModel)
         }
+        .sheet(isPresented: $aiViewModel.showDecisions) {
+            DecisionTrackingView(viewModel: aiViewModel) { messageID in
+                // Jump to message in chat
+                // TODO: Implement scroll to message
+                print("Jump to message: \(messageID)")
+            }
+        }
         .networkStateBanner()
         .onNetworkReconnect {
             await viewModel.retryAllFailedMessages()

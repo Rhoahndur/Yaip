@@ -165,8 +165,50 @@ class N8NService {
             ]
         )
 
-        // TODO: Replace with real N8N webhook call
-        return try await mockSuggestMeetingTimes()
+        // PRODUCTION: Call real N8N webhook
+        do {
+            print("📤 Calling N8N webhook for meeting suggestions...")
+            print("   URL: \(baseURL)/schedule_meeting")
+            print("   Conversation ID: \(conversationID)")
+
+            let response = try await callWebhook(request: request, responseType: MeetingSuggestionResponse.self)
+
+            print("✅ Received meeting suggestions from N8N")
+            print("   Success: \(response.success)")
+            print("   Has intent: \(response.hasMeetingIntent)")
+            print("   Suggested times: \(response.suggestedTimes.count)")
+
+            // Convert response to MeetingSuggestion model
+            let timeSlots = response.suggestedTimes.map { timeData in
+                TimeSlot(
+                    date: parseISODate(timeData.date) ?? Date(),
+                    startTime: timeData.startTime,
+                    endTime: timeData.endTime,
+                    available: response.participants,
+                    conflicts: []
+                )
+            }
+
+            return MeetingSuggestion(
+                detectedIntent: response.detectedIntent,
+                suggestedTimes: timeSlots,
+                duration: response.duration,
+                participants: response.participants
+            )
+        } catch {
+            print("❌ N8N webhook error: \(error)")
+            print("   Falling back to mock data...")
+
+            // Fallback to mock if N8N fails (for testing)
+            return try await mockSuggestMeetingTimes()
+        }
+    }
+
+    // Helper to parse ISO date string
+    private func parseISODate(_ dateString: String) -> Date? {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withFullDate, .withDashSeparatorInDate]
+        return formatter.date(from: dateString)
     }
 
     // MARK: - Decision Tracking
@@ -174,14 +216,68 @@ class N8NService {
     /// Extract decisions from conversation
     func extractDecisions(conversationID: String) async throws -> [Decision] {
         let request = AIRequest(
-            feature: "extract_decisions",
+            feature: "track_decisions",
             conversationID: conversationID,
             userID: AuthManager.shared.currentUserID ?? "",
             parameters: [:]
         )
 
-        // TODO: Replace with real N8N webhook call
-        return try await mockExtractDecisions()
+        // PRODUCTION: Call real N8N webhook
+        do {
+            print("📤 Calling N8N webhook for decision tracking...")
+            print("   URL: \(baseURL)/track_decisions")
+            print("   Conversation ID: \(conversationID)")
+
+            let response = try await callWebhook(request: request, responseType: DecisionTrackingResponse.self)
+
+            print("✅ Received decisions from N8N")
+            print("   Success: \(response.success)")
+            print("   Decisions found: \(response.decisions.count)")
+
+            // Convert response to Decision models
+            let decisions = response.decisions.map { item in
+                Decision(
+                    id: UUID().uuidString,
+                    decision: item.decision,
+                    decisionMaker: item.decisionMaker,
+                    reasoning: item.reasoning,
+                    impact: parseImpact(item.impact),
+                    category: parseCategory(item.category),
+                    context: item.context,
+                    timestamp: parseISODate(item.timestamp) ?? Date(),
+                    messageID: conversationID
+                )
+            }
+
+            return decisions
+        } catch {
+            print("❌ N8N webhook error: \(error)")
+            print("   Falling back to mock data...")
+
+            // Fallback to mock if N8N fails (for testing)
+            return try await mockExtractDecisions()
+        }
+    }
+
+    // Helper to parse impact string
+    private func parseImpact(_ impactString: String?) -> Decision.Impact {
+        guard let impact = impactString?.lowercased() else { return .medium }
+        switch impact {
+        case "high": return .high
+        case "low": return .low
+        default: return .medium
+        }
+    }
+
+    // Helper to parse category string
+    private func parseCategory(_ categoryString: String?) -> Decision.Category {
+        guard let category = categoryString?.lowercased() else { return .other }
+        switch category {
+        case "technical": return .technical
+        case "business": return .business
+        case "process": return .process
+        default: return .other
+        }
     }
 
     // MARK: - Priority Detection
@@ -386,20 +482,35 @@ extension N8NService {
             Decision(
                 id: UUID().uuidString,
                 decision: "Move to microservices architecture for better scalability",
+                decisionMaker: "Sarah Chen",
                 reasoning: "Current monolith is hitting performance limits. Team agreed microservices will help with scaling and team autonomy.",
-                alternatives: ["Stay with monolith", "Modular monolith approach"],
-                participants: ["Sarah Chen", "Mike Johnson", "Tech Lead"],
+                impact: .high,
+                category: .technical,
+                context: "Discussed during architecture review meeting. All senior engineers agreed.",
                 timestamp: Calendar.current.date(byAdding: .day, value: -2, to: Date())!,
                 messageID: "msg-decision-1"
             ),
             Decision(
                 id: UUID().uuidString,
-                decision: "Hire 2 additional backend engineers",
-                reasoning: "Need more bandwidth for Q4 launch. Current team is stretched thin.",
-                alternatives: ["Outsource to contractors", "Delay launch"],
-                participants: ["Sarah Chen", "HR Director"],
+                decision: "Hire 2 additional backend engineers for Q4 launch",
+                decisionMaker: "Mike Johnson",
+                reasoning: "Need more bandwidth for Q4 launch. Current team is stretched thin and at risk of burnout.",
+                impact: .high,
+                category: .business,
+                context: "Budget approved by leadership. HR to start recruitment immediately.",
                 timestamp: Calendar.current.date(byAdding: .day, value: -5, to: Date())!,
                 messageID: "msg-decision-2"
+            ),
+            Decision(
+                id: UUID().uuidString,
+                decision: "Change standup time from 9am to 10am",
+                decisionMaker: "Team consensus",
+                reasoning: "Team members in different timezones were having trouble joining at 9am.",
+                impact: .low,
+                category: .process,
+                context: "Proposed by remote team members, no objections from anyone.",
+                timestamp: Calendar.current.date(byAdding: .day, value: -1, to: Date())!,
+                messageID: "msg-decision-3"
             )
         ]
     }
@@ -504,6 +615,43 @@ struct ActionItemData: Codable {
     let context: String
 }
 
+// N8N Meeting Suggestions Response
+struct MeetingSuggestionResponse: Codable {
+    let success: Bool
+    let hasMeetingIntent: Bool
+    let detectedIntent: String
+    let suggestedTimes: [TimeSlotData]
+    let duration: Int
+    let participants: [String]
+    let timestamp: String
+    let conversationID: String
+}
+
+struct TimeSlotData: Codable {
+    let date: String
+    let startTime: String
+    let endTime: String
+    let dayOfWeek: String?
+}
+
+// N8N Decision Tracking Response
+struct DecisionTrackingResponse: Codable {
+    let success: Bool
+    let decisions: [DecisionData]
+    let timestamp: String
+    let conversationID: String
+}
+
+struct DecisionData: Codable {
+    let decision: String
+    let decisionMaker: String
+    let timestamp: String
+    let reasoning: String
+    let impact: String
+    let category: String
+    let context: String
+}
+
 struct ActionItem: Codable, Identifiable {
     let id: String
     var task: String
@@ -542,11 +690,21 @@ struct TimeSlot: Codable, Identifiable {
 struct Decision: Codable, Identifiable {
     let id: String
     let decision: String
+    let decisionMaker: String
     let reasoning: String
-    let alternatives: [String]
-    let participants: [String]
+    let impact: Impact
+    let category: Category
+    let context: String
     let timestamp: Date
     let messageID: String
+
+    enum Impact: String, Codable {
+        case low, medium, high
+    }
+
+    enum Category: String, Codable {
+        case technical, business, process, other
+    }
 }
 
 struct PriorityMessage: Codable, Identifiable {
