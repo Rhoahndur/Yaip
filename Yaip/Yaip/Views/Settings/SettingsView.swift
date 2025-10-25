@@ -9,6 +9,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @ObservedObject private var authManager = AuthManager.shared
+    @ObservedObject private var themeManager = ThemeManager.shared
     @Environment(\.dismiss) private var dismiss
     @State private var showLogoutConfirmation = false
 
@@ -114,13 +115,17 @@ struct SettingsView: View {
             }
             .confirmationDialog("Sign Out", isPresented: $showLogoutConfirmation) {
                 Button("Sign Out", role: .destructive) {
-                    authManager.signOut()
-                    dismiss()
+                    Task {
+                        try? await authManager.signOut()
+                        dismiss()
+                    }
                 }
                 Button("Cancel", role: .cancel) { }
             } message: {
                 Text("Are you sure you want to sign out?")
             }
+            .preferredColorScheme(themeManager.currentTheme.colorScheme)
+            .animation(.easeInOut(duration: 0.3), value: themeManager.currentTheme)
         }
     }
 

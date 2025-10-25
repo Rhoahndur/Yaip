@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import EventKit
 
 struct CalendarSettingsView: View {
     @StateObject private var calendarService = AppleCalendarService.shared

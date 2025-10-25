@@ -64,7 +64,7 @@ class ThemeManager: ObservableObject {
 
 /// View modifier to apply theme
 struct ThemedView: ViewModifier {
-    @StateObject private var themeManager = ThemeManager.shared
+    @ObservedObject private var themeManager = ThemeManager.shared
 
     func body(content: Content) -> some View {
         content

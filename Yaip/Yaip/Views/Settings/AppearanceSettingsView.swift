@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct AppearanceSettingsView: View {
-    @StateObject private var themeManager = ThemeManager.shared
+    @ObservedObject private var themeManager = ThemeManager.shared
 
     var body: some View {
         Form {
@@ -88,6 +88,8 @@ struct AppearanceSettingsView: View {
         }
         .navigationTitle("Appearance")
         .navigationBarTitleDisplayMode(.inline)
+        .preferredColorScheme(themeManager.currentTheme.colorScheme)
+        .animation(.easeInOut(duration: 0.3), value: themeManager.currentTheme)
     }
 
     private func themeDescription(for theme: AppTheme) -> String {

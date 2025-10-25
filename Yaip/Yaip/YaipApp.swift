@@ -13,7 +13,7 @@ import SwiftData
 struct YaipApp: App {
     @Environment(\.scenePhase) private var scenePhase
     @StateObject private var authManager = AuthManager.shared
-    @StateObject private var themeManager = ThemeManager.shared
+    @ObservedObject private var themeManager = ThemeManager.shared
 
     init() {
         // Initialize Firebase

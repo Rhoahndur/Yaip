@@ -26,7 +26,8 @@ class AppleCalendarService: ObservableObject {
     /// Check current authorization status
     func checkAuthorizationStatus() {
         authorizationStatus = EKEventStore.authorizationStatus(for: .event)
-        isAuthorized = (authorizationStatus == .fullAccess || authorizationStatus == .authorized)
+        // iOS 17.0+ uses .fullAccess and .writeOnly instead of deprecated .authorized
+        isAuthorized = (authorizationStatus == .fullAccess || authorizationStatus == .writeOnly)
     }
 
     /// Request calendar access permission

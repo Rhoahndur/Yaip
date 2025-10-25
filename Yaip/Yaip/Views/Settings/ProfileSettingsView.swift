@@ -114,7 +114,7 @@ struct ProfileSettingsView: View {
         .navigationTitle("Edit Profile")
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showImagePicker) {
-            ImagePicker(image: $selectedImage)
+            ImagePicker(selectedImage: $selectedImage)
         }
         .alert("Profile Updated", isPresented: $showSuccessAlert) {
             Button("OK") {
