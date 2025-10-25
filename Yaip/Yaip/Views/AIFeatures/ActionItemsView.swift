@@ -60,12 +60,10 @@ struct ActionItemsView: View {
     }
 
     private var loadingView: some View {
-        VStack(spacing: 16) {
-            ProgressView()
-            Text("Extracting action items...")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-        }
+        AILoadingView(
+            title: "Extracting action items",
+            subtitle: "AI is identifying tasks, assignees, and deadlines..."
+        )
         .frame(maxHeight: .infinity)
     }
 

@@ -41,14 +41,11 @@ struct ThreadSummaryView: View {
 
                     // Summary content
                     if viewModel.isLoadingSummary {
-                        VStack(spacing: 16) {
-                            ProgressView()
-                            Text("AI is analyzing the conversation...")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 40)
+                        AILoadingView(
+                            title: "Analyzing conversation",
+                            subtitle: "AI is reading and summarizing messages..."
+                        )
+                        .padding(.vertical, 20)
 
                     } else if let summary = viewModel.currentSummary {
                         // Use Markdown rendering for rich formatting
@@ -144,33 +141,6 @@ struct ThreadSummaryView: View {
            let rootVC = window.rootViewController {
             rootVC.present(activityVC, animated: true)
         }
-    }
-}
-
-struct AIErrorView: View {
-    let error: String
-    let retry: () -> Void
-
-    var body: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "exclamationmark.triangle")
-                .font(.system(size: 48))
-                .foregroundStyle(.red)
-
-            Text("Something went wrong")
-                .font(.headline)
-
-            Text(error)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-
-            Button(action: retry) {
-                Label("Try Again", systemImage: "arrow.clockwise")
-            }
-            .buttonStyle(.borderedProminent)
-        }
-        .padding()
     }
 }
 
