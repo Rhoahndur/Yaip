@@ -11,13 +11,17 @@ import Combine
 
 /// Service for accessing Apple Calendar (EventKit) to check availability
 @MainActor
-class AppleCalendarService: ObservableObject {
+class AppleCalendarService: ObservableObject, CalendarProvider {
     static let shared = AppleCalendarService()
 
     private let eventStore = EKEventStore()
 
     @Published var isAuthorized = false
     @Published var authorizationStatus: EKAuthorizationStatus = .notDetermined
+
+    // CalendarProvider conformance
+    var providerName: String { "Apple Calendar" }
+    var userIdentifier: String? { nil } // Apple Calendar doesn't expose user email
 
     private init() {
         checkAuthorizationStatus()
@@ -141,6 +145,13 @@ class AppleCalendarService: ObservableObject {
 
         return calendar.date(from: components) ?? date
     }
+
+    /// Disconnect from Apple Calendar (not applicable - managed by system)
+    func disconnect() async throws {
+        // Apple Calendar permissions are managed by iOS Settings
+        // Users must go to Settings → Yaip → Calendars to revoke
+        throw CalendarError.notSupported("Apple Calendar permissions are managed in iOS Settings")
+    }
 }
 
 /// Calendar service errors
@@ -148,6 +159,7 @@ enum CalendarError: LocalizedError {
     case notAuthorized
     case accessDenied
     case noEventsFound
+    case notSupported(String)
 
     var errorDescription: String? {
         switch self {
@@ -157,6 +169,8 @@ enum CalendarError: LocalizedError {
             return "Calendar access denied by user"
         case .noEventsFound:
             return "No calendar events found"
+        case .notSupported(let message):
+            return message
         }
     }
 }

@@ -141,9 +141,9 @@ class AIFeaturesViewModel: ObservableObject {
                     context: context
                 )
 
-                // Enhance with Apple Calendar availability if authorized
-                if AppleCalendarService.shared.isAuthorized {
-                    let enrichedTimeSlots = AppleCalendarService.shared.checkAvailability(
+                // Enhance with calendar availability if any provider is authorized
+                if CalendarManager.shared.hasAnyProviderConnected {
+                    let enrichedTimeSlots = await CalendarManager.shared.checkAvailability(
                         for: suggestion.suggestedTimes
                     )
 

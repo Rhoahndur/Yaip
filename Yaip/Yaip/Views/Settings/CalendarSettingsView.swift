@@ -9,9 +9,11 @@ import SwiftUI
 import EventKit
 
 struct CalendarSettingsView: View {
-    @StateObject private var calendarService = AppleCalendarService.shared
+    @StateObject private var calendarManager = CalendarManager.shared
     @State private var showingPermissionAlert = false
-    @State private var isRequesting = false
+    @State private var isRequestingApple = false
+    @State private var isRequestingGoogle = false
+    @State private var isRequestingOutlook = false
 
     var body: some View {
         Form {
@@ -26,19 +28,25 @@ struct CalendarSettingsView: View {
                         VStack(alignment: .leading, spacing: 4) {
                             Text("Calendar Integration")
                                 .font(.headline)
-                            Text("Smart meeting suggestions")
+                            Text("Connect calendars for smarter suggestions")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
                     }
                     .padding(.vertical, 8)
-
-                    // Status
-                    statusBadge
                 }
             }
 
-            if calendarService.isAuthorized {
+            // Apple Calendar Section
+            appleCalendarSection
+
+            // Google Calendar Section
+            googleCalendarSection
+
+            // Outlook Calendar Section
+            outlookCalendarSection
+
+            if calendarManager.hasAnyProviderConnected {
                 Section("Benefits") {
                     FeatureRow(
                         icon: "checkmark.circle.fill",
@@ -56,40 +64,6 @@ struct CalendarSettingsView: View {
                         color: .purple
                     )
                 }
-            } else {
-                Section("What You'll Get") {
-                    FeatureRow(
-                        icon: "calendar",
-                        text: "Check your actual calendar availability",
-                        color: .blue
-                    )
-                    FeatureRow(
-                        icon: "sparkles",
-                        text: "AI-powered meeting suggestions",
-                        color: .purple
-                    )
-                    FeatureRow(
-                        icon: "lock.shield",
-                        text: "We only check busy/free, never event details",
-                        color: .green
-                    )
-                }
-
-                Section {
-                    Button {
-                        requestCalendarAccess()
-                    } label: {
-                        if isRequesting {
-                            ProgressView()
-                                .frame(maxWidth: .infinity)
-                        } else {
-                            Label("Enable Calendar Access", systemImage: "calendar.badge.plus")
-                                .frame(maxWidth: .infinity)
-                        }
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(isRequesting)
-                }
             }
 
             Section {
@@ -105,82 +79,264 @@ struct CalendarSettingsView: View {
                 .padding(.vertical, 4)
             }
 
-            if calendarService.authorizationStatus == .denied {
-                Section {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Label("Calendar Access Denied", systemImage: "exclamationmark.triangle.fill")
-                            .font(.subheadline)
-                            .fontWeight(.semibold)
-                            .foregroundStyle(.orange)
-
-                        Text("To enable calendar integration, go to Settings > Yaip > Calendars and turn on access.")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-
-                        Button("Open Settings") {
-                            if let url = URL(string: UIApplication.openSettingsURLString) {
-                                UIApplication.shared.open(url)
-                            }
-                        }
-                        .buttonStyle(.bordered)
-                    }
-                    .padding(.vertical, 4)
-                }
-            }
         }
         .navigationTitle("Calendar Settings")
         .navigationBarTitleDisplayMode(.inline)
         .alert("Calendar Permission Required", isPresented: $showingPermissionAlert) {
             Button("OK", role: .cancel) { }
         } message: {
-            Text("Yaip needs calendar access to suggest meeting times when you're available. We only check if you're busy or free, never read event details.")
+            Text("Calendar permission is required for smart meeting suggestions.")
         }
     }
 
+    // MARK: - Apple Calendar Section
     @ViewBuilder
-    private var statusBadge: some View {
-        HStack {
-            if calendarService.isAuthorized {
-                Image(systemName: "checkmark.circle.fill")
-                    .foregroundStyle(.green)
-                Text("Connected")
-                    .fontWeight(.semibold)
+    private var appleCalendarSection: some View {
+        Section("Apple Calendar") {
+            HStack(spacing: 12) {
+                Image(systemName: "calendar")
+                    .font(.title2)
+                    .foregroundStyle(.blue)
+                    .frame(width: 40)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    if calendarManager.appleCalendar.isAuthorized {
+                        Text("Connected")
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                        Text("Built-in iOS calendar")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        Text("Not Connected")
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                            .foregroundStyle(.secondary)
+                        Text("Built-in iOS calendar")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
                 Spacer()
-                Text("Apple Calendar")
-                    .foregroundStyle(.secondary)
-                    .font(.caption)
-            } else {
-                Image(systemName: "xmark.circle.fill")
-                    .foregroundStyle(.gray)
-                Text("Not Connected")
-                    .foregroundStyle(.secondary)
+
+                if calendarManager.appleCalendar.isAuthorized {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(.green)
+                        .font(.title3)
+                } else {
+                    Button {
+                        requestAppleCalendarAccess()
+                    } label: {
+                        if isRequestingApple {
+                            ProgressView()
+                        } else {
+                            Text("Connect")
+                                .fontWeight(.semibold)
+                        }
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(isRequestingApple)
+                }
             }
+            .padding(.vertical, 4)
         }
-        .padding()
-        .background(calendarService.isAuthorized ? Color.green.opacity(0.1) : Color.gray.opacity(0.1))
-        .cornerRadius(12)
     }
 
-    private func requestCalendarAccess() {
-        isRequesting = true
+    // MARK: - Google Calendar Section
+    @ViewBuilder
+    private var googleCalendarSection: some View {
+        Section("Google Calendar") {
+            HStack(spacing: 12) {
+                Image(systemName: "globe")
+                    .font(.title2)
+                    .foregroundStyle(.red)
+                    .frame(width: 40)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    if let google = calendarManager.googleCalendar, google.isAuthorized {
+                        Text("Connected")
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                        Text(google.userEmail ?? "Google Workspace")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        Text("Not Connected")
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                            .foregroundStyle(.secondary)
+                        Text("Google Workspace calendar")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                Spacer()
+
+                if let google = calendarManager.googleCalendar, google.isAuthorized {
+                    Menu {
+                        Button(role: .destructive) {
+                            disconnectGoogleCalendar()
+                        } label: {
+                            Label("Disconnect", systemImage: "xmark")
+                        }
+                    } label: {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundStyle(.green)
+                            .font(.title3)
+                    }
+                } else {
+                    Button {
+                        requestGoogleCalendarAccess()
+                    } label: {
+                        if isRequestingGoogle {
+                            ProgressView()
+                        } else {
+                            Text("Connect")
+                                .fontWeight(.semibold)
+                        }
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(isRequestingGoogle)
+                }
+            }
+            .padding(.vertical, 4)
+        }
+    }
+
+    // MARK: - Outlook Calendar Section
+    @ViewBuilder
+    private var outlookCalendarSection: some View {
+        Section("Outlook Calendar") {
+            HStack(spacing: 12) {
+                Image(systemName: "envelope")
+                    .font(.title2)
+                    .foregroundStyle(.blue)
+                    .frame(width: 40)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    if let outlook = calendarManager.outlookCalendar, outlook.isAuthorized {
+                        Text("Connected")
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                        Text(outlook.userEmail ?? "Microsoft 365")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        Text("Not Connected")
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                            .foregroundStyle(.secondary)
+                        Text("Microsoft 365 calendar")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                Spacer()
+
+                if let outlook = calendarManager.outlookCalendar, outlook.isAuthorized {
+                    Menu {
+                        Button(role: .destructive) {
+                            disconnectOutlookCalendar()
+                        } label: {
+                            Label("Disconnect", systemImage: "xmark")
+                        }
+                    } label: {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundStyle(.green)
+                            .font(.title3)
+                    }
+                } else {
+                    Button {
+                        requestOutlookCalendarAccess()
+                    } label: {
+                        if isRequestingOutlook {
+                            ProgressView()
+                        } else {
+                            Text("Connect")
+                                .fontWeight(.semibold)
+                        }
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(isRequestingOutlook)
+                }
+            }
+            .padding(.vertical, 4)
+        }
+    }
+
+    // MARK: - Actions
+    private func requestAppleCalendarAccess() {
+        isRequestingApple = true
 
         Task {
             do {
-                let granted = try await calendarService.requestAccess()
-
-                await MainActor.run {
-                    isRequesting = false
-
-                    if !granted {
-                        showingPermissionAlert = true
-                    }
-                }
+                _ = try await calendarManager.appleCalendar.requestAccess()
+                calendarManager.enableProvider(.apple)
             } catch {
-                await MainActor.run {
-                    isRequesting = false
-                    showingPermissionAlert = true
-                }
+                print("❌ Apple Calendar error: \(error)")
             }
+            isRequestingApple = false
+        }
+    }
+
+    private func requestGoogleCalendarAccess() {
+        isRequestingGoogle = true
+
+        Task {
+            do {
+                // Initialize Google Calendar if not already
+                if calendarManager.googleCalendar == nil {
+                    calendarManager.enableProvider(.google)
+                }
+
+                guard let google = calendarManager.googleCalendar else { return }
+                _ = try await google.requestAccess()
+                calendarManager.enableProvider(.google)
+            } catch {
+                print("❌ Google Calendar error: \(error)")
+                showingPermissionAlert = true
+            }
+            isRequestingGoogle = false
+        }
+    }
+
+    private func disconnectGoogleCalendar() {
+        Task {
+            guard let google = calendarManager.googleCalendar else { return }
+            try? await google.disconnect()
+            calendarManager.disableProvider(.google)
+        }
+    }
+
+    private func requestOutlookCalendarAccess() {
+        isRequestingOutlook = true
+
+        Task {
+            do {
+                // Initialize Outlook Calendar if not already
+                if calendarManager.outlookCalendar == nil {
+                    calendarManager.enableProvider(.outlook)
+                }
+
+                guard let outlook = calendarManager.outlookCalendar else { return }
+                _ = try await outlook.requestAccess()
+                calendarManager.enableProvider(.outlook)
+            } catch {
+                print("❌ Outlook Calendar error: \(error)")
+                showingPermissionAlert = true
+            }
+            isRequestingOutlook = false
+        }
+    }
+
+    private func disconnectOutlookCalendar() {
+        Task {
+            guard let outlook = calendarManager.outlookCalendar else { return }
+            try? await outlook.disconnect()
+            calendarManager.disableProvider(.outlook)
         }
     }
 }

@@ -8,6 +8,8 @@
 import SwiftUI
 import FirebaseCore
 import SwiftData
+import GoogleSignIn
+import MSAL
 
 @main
 struct YaipApp: App {
@@ -32,12 +34,34 @@ struct YaipApp: App {
                 ContentView()
             }
             .preferredColorScheme(themeManager.currentTheme.colorScheme)
+            .onOpenURL { url in
+                handleOAuthURL(url)
+            }
         }
         .onChange(of: scenePhase) { oldPhase, newPhase in
             handleScenePhaseChange(oldPhase, newPhase)
         }
     }
     
+    private func handleOAuthURL(_ url: URL) {
+        print("🔗 Received URL: \(url)")
+
+        // Check if it's a Google Sign-In URL
+        if GIDSignIn.sharedInstance.handle(url) {
+            print("✅ URL handled by Google Sign-In")
+            return
+        }
+
+        // Check if it's a Microsoft MSAL URL
+        if url.scheme?.hasPrefix("msauth") == true {
+            MSALPublicClientApplication.handleMSALResponse(url, sourceApplication: nil)
+            print("✅ URL handled by MSAL")
+            return
+        }
+
+        print("⚠️ URL not recognized by any OAuth provider")
+    }
+
     private func handleScenePhaseChange(_ oldPhase: ScenePhase, _ newPhase: ScenePhase) {
         switch newPhase {
         case .active:

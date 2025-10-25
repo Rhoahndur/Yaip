@@ -15,5 +15,24 @@
 	<string>$(N8N_AUTH_TOKEN)</string>
 	<key>NSCalendarsUsageDescription</key>
 	<string>Yaip needs calendar access to suggest meeting times when you're available. We only check if you're busy or free, never read event details.</string>
+	<key>GIDClientID</key>
+	<string>$(GOOGLE_CLIENT_ID)</string>
+	<key>MSALClientID</key>
+	<string>$(MICROSOFT_CLIENT_ID)</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>$(GOOGLE_REVERSED_CLIENT_ID)</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>msauth.$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>
