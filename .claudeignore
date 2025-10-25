@@ -1,0 +1,27 @@
+# Claude Code ignore file
+# Files and directories that Claude Code should not read or modify
+
+# Sensitive configuration files
+Config.xcconfig
+.env
+.env.local
+GoogleService-Info.plist
+
+# Build artifacts
+build/
+DerivedData/
+*.xcarchive
+*.ipa
+
+# Dependencies
+Pods/
+Carthage/
+.build/
+
+# IDE files
+xcuserdata/
+.DS_Store
+.swiftpm/
+
+# Documentation that doesn't need AI modification
+*.md.backup

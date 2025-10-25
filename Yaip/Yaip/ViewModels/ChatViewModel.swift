@@ -425,11 +425,17 @@ class ChatViewModel: ObservableObject {
                 // Upload succeeded
                 print("   ✅ Image uploaded: \(url)")
                 updatedMessage.mediaURL = url
-                messages[index].mediaURL = mediaURL
+                // Re-find index after async operation
+                if let currentIndex = messages.firstIndex(where: { $0.id == messageID }) {
+                    messages[currentIndex].mediaURL = mediaURL
+                }
             } else {
                 // Upload failed
                 print("   ❌ Image upload failed")
-                messages[index].status = .failed
+                // Re-find index after async operation
+                if let currentIndex = messages.firstIndex(where: { $0.id == messageID }) {
+                    messages[currentIndex].status = .failed
+                }
                 return
             }
         }
@@ -437,11 +443,14 @@ class ChatViewModel: ObservableObject {
         // Send to Firestore
         do {
             try await messageService.sendMessage(updatedMessage)
-            
+
             // Mark as sent (will be confirmed by listener)
-            messages[index].status = .sent
+            // Re-find index after async operation
+            if let currentIndex = messages.firstIndex(where: { $0.id == messageID }) {
+                messages[currentIndex].status = .sent
+            }
             try? localStorage.markMessageSynced(id: messageID)
-            
+
             // Update conversation last message
             let lastMessageText = updatedMessage.text ?? "📷 Photo"
             let lastMessage = LastMessage(
@@ -453,9 +462,12 @@ class ChatViewModel: ObservableObject {
                 conversationID: conversationID,
                 lastMessage: lastMessage
             )
-            
+
         } catch {
-            messages[index].status = .failed
+            // Re-find index after async operation
+            if let currentIndex = messages.firstIndex(where: { $0.id == messageID }) {
+                messages[currentIndex].status = .failed
+            }
         }
     }
     
@@ -595,7 +607,7 @@ class ChatViewModel: ObservableObject {
     private func handleTypingChange(text: String) async {
         let isTyping = !text.isEmpty
         await updateTypingStatus(isTyping)
-        
+
         // Auto-stop typing after 3 seconds of no changes
         typingTimer?.invalidate()
         if isTyping {
@@ -606,7 +618,107 @@ class ChatViewModel: ObservableObject {
             }
         }
     }
-    
+
+    // MARK: - Message Polish Features
+
+    /// Toggle a reaction on a message
+    func toggleReaction(emoji: String, message: Message) async {
+        guard let messageID = message.id,
+              let conversationID = conversation.id,
+              let currentUserID = authManager.currentUserID else {
+            print("❌ Missing required IDs for reaction")
+            return
+        }
+
+        // Optimistic UI update
+        if let index = messages.firstIndex(where: { $0.id == messageID }) {
+            var updatedMessage = messages[index]
+
+            // Toggle reaction locally
+            if var users = updatedMessage.reactions[emoji] {
+                if users.contains(currentUserID) {
+                    users.removeAll { $0 == currentUserID }
+                    if users.isEmpty {
+                        updatedMessage.reactions.removeValue(forKey: emoji)
+                    } else {
+                        updatedMessage.reactions[emoji] = users
+                    }
+                } else {
+                    users.append(currentUserID)
+                    updatedMessage.reactions[emoji] = users
+                }
+            } else {
+                updatedMessage.reactions[emoji] = [currentUserID]
+            }
+
+            messages[index] = updatedMessage
+        }
+
+        // Sync to Firestore
+        do {
+            try await messageService.toggleReaction(
+                emoji: emoji,
+                messageID: messageID,
+                conversationID: conversationID,
+                userID: currentUserID
+            )
+            print("✅ Toggled reaction: \(emoji)")
+        } catch {
+            print("❌ Failed to toggle reaction: \(error)")
+            errorMessage = "Failed to add reaction"
+        }
+    }
+
+    /// Delete a message
+    func deleteMessage(_ message: Message) async {
+        guard let messageID = message.id,
+              let conversationID = conversation.id else {
+            return
+        }
+
+        // Optimistic UI update
+        if let index = messages.firstIndex(where: { $0.id == messageID }) {
+            messages[index].isDeleted = true
+            messages[index].deletedAt = Date()
+            messages[index].text = "[Message deleted]"
+        }
+
+        // Sync to Firestore
+        do {
+            try await messageService.deleteMessage(
+                messageID: messageID,
+                conversationID: conversationID
+            )
+            print("✅ Deleted message")
+        } catch {
+            print("❌ Failed to delete message: \(error)")
+            errorMessage = "Failed to delete message"
+
+            // Revert optimistic update
+            if let index = messages.firstIndex(where: { $0.id == messageID }) {
+                messages[index].isDeleted = false
+                messages[index].deletedAt = nil
+            }
+        }
+    }
+
+    /// Set the message to reply to
+    @Published var replyingTo: Message?
+
+    func setReplyTo(_ message: Message) {
+        replyingTo = message
+    }
+
+    func clearReply() {
+        replyingTo = nil
+    }
+
+    /// Get the message that another message is replying to
+    func getReplyToMessage(for message: Message) -> Message? {
+        guard let replyToID = message.replyTo else { return nil }
+        return messages.first { $0.id == replyToID }
+    }
+
     deinit {
         stopListening()
         typingTimer?.invalidate()

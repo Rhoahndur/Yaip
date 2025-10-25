@@ -11,10 +11,32 @@ import Foundation
 class N8NService {
     static let shared = N8NService()
 
-    // TODO: Move to environment variable or secure config
-    private let baseURL = "https://your-n8n-instance.com/webhook"
+    // Load configuration from Info.plist (values come from Config.xcconfig)
+    private let baseURL: String = {
+        guard let url = Bundle.main.object(forInfoDictionaryKey: "N8N_WEBHOOK_URL") as? String,
+              !url.isEmpty,
+              url != "$(N8N_WEBHOOK_URL)" else {
+            print("⚠️ N8N_WEBHOOK_URL not configured in Config.xcconfig")
+            return "https://your-n8n-instance.com/webhook"
+        }
+        return url
+    }()
 
-    private init() {}
+    private let authToken: String = {
+        guard let token = Bundle.main.object(forInfoDictionaryKey: "N8N_AUTH_TOKEN") as? String,
+              !token.isEmpty,
+              token != "$(N8N_AUTH_TOKEN)" else {
+            print("⚠️ N8N_AUTH_TOKEN not configured in Config.xcconfig")
+            return "your_secret_token_here"
+        }
+        return token
+    }()
+
+    private init() {
+        print("🔧 N8N Service initialized")
+        print("   Webhook URL: \(baseURL)")
+        print("   Auth Token: \(authToken.prefix(10))***")
+    }
 
     // MARK: - Thread Summarization
 
@@ -29,8 +51,32 @@ class N8NService {
             ]
         )
 
-        // TODO: Replace with real N8N webhook call
-        return try await mockSummarizeThread(conversationID: conversationID, messageCount: messageCount)
+        // PRODUCTION: Call real N8N webhook
+        do {
+            print("📤 Calling N8N webhook for thread summary...")
+            print("   URL: \(baseURL)/summarize")
+            print("   Conversation ID: \(conversationID)")
+            print("   Message Count: \(messageCount)")
+
+            let response = try await callWebhook(request: request, responseType: ThreadSummaryResponse.self)
+
+            print("✅ Received summary from N8N")
+            print("   Success: \(response.success)")
+            print("   Message Count: \(response.messageCount)")
+
+            return ThreadSummary(
+                summary: response.summary,
+                messageCount: response.messageCount,
+                confidence: response.confidence,
+                timestamp: ISO8601DateFormatter().date(from: response.timestamp) ?? Date()
+            )
+        } catch {
+            print("❌ N8N webhook error: \(error)")
+            print("   Falling back to mock data...")
+
+            // Fallback to mock if N8N fails (for testing)
+            return try await mockSummarizeThread(conversationID: conversationID, messageCount: messageCount)
+        }
     }
 
     // MARK: - Action Item Extraction
@@ -119,25 +165,47 @@ class N8NService {
     /// Generic method to call N8N webhook
     private func callWebhook<T: Codable>(request: AIRequest, responseType: T.Type) async throws -> T {
         guard let url = URL(string: "\(baseURL)/\(request.feature)") else {
+            print("❌ Invalid URL: \(baseURL)/\(request.feature)")
             throw N8NError.invalidURL
         }
 
         var urlRequest = URLRequest(url: url)
         urlRequest.httpMethod = "POST"
         urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        urlRequest.setValue(authToken, forHTTPHeaderField: "Authorization")
+        urlRequest.timeoutInterval = 30 // 30 second timeout
 
-        let encoder = JSONEncoder()
-        encoder.keyEncodingStrategy = .convertToSnakeCase
-        urlRequest.httpBody = try encoder.encode(request)
+        // Encode request body
+        let requestBody: [String: Any] = [
+            "conversationID": request.conversationID,
+            "userID": request.userID,
+            "parameters": request.parameters
+        ]
+
+        urlRequest.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
+
+        print("📡 Sending request to N8N...")
+        print("   Headers: Authorization: Bearer ***")
 
         let (data, response) = try await URLSession.shared.data(for: urlRequest)
 
         guard let httpResponse = response as? HTTPURLResponse else {
+            print("❌ Invalid HTTP response")
             throw N8NError.invalidResponse
         }
 
+        print("📥 Received response: \(httpResponse.statusCode)")
+
         guard (200...299).contains(httpResponse.statusCode) else {
+            if let errorString = String(data: data, encoding: .utf8) {
+                print("❌ Error response body: \(errorString)")
+            }
             throw N8NError.httpError(statusCode: httpResponse.statusCode)
+        }
+
+        // Debug: Print raw response
+        if let responseString = String(data: data, encoding: .utf8) {
+            print("📄 Response body: \(responseString.prefix(200))...")
         }
 
         let decoder = JSONDecoder()
@@ -346,6 +414,15 @@ struct AIRequest: Encodable {
         let jsonString = String(data: jsonData, encoding: .utf8) ?? "{}"
         try container.encode(jsonString, forKey: .parameters)
     }
+}
+
+// N8N Response wrapper
+struct ThreadSummaryResponse: Codable {
+    let success: Bool
+    let summary: String
+    let messageCount: Int
+    let confidence: Double
+    let timestamp: String
 }
 
 struct ThreadSummary: Codable {

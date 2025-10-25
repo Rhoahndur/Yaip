@@ -20,12 +20,28 @@ struct Message: Codable, Identifiable, Equatable, Hashable {
     var timestamp: Date
     var status: MessageStatus
     var readBy: [String] // User IDs who have read this message
-    
+
+    // Polish features
+    var reactions: [String: [String]] = [:] // emoji -> [userIDs]
+    var replyTo: String? // messageID this is replying to
+    var isDeleted: Bool = false
+    var deletedAt: Date?
+
     // Computed property to check if message is from current user
     func isFromCurrentUser(_ currentUserID: String) -> Bool {
         return senderID == currentUserID
     }
-    
+
+    // Get total reaction count
+    var totalReactions: Int {
+        reactions.values.reduce(0) { $0 + $1.count }
+    }
+
+    // Check if user reacted with specific emoji
+    func userReacted(with emoji: String, userID: String) -> Bool {
+        reactions[emoji]?.contains(userID) ?? false
+    }
+
     enum CodingKeys: String, CodingKey {
         case id
         case conversationID
@@ -36,6 +52,10 @@ struct Message: Codable, Identifiable, Equatable, Hashable {
         case timestamp
         case status
         case readBy
+        case reactions
+        case replyTo
+        case isDeleted
+        case deletedAt
     }
 }
 

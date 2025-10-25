@@ -191,6 +191,86 @@ class MessageService {
                 completion(isTyping)
             }
     }
+
+    // MARK: - Message Reactions
+
+    /// Add or remove a reaction to a message
+    func toggleReaction(emoji: String, messageID: String, conversationID: String, userID: String) async throws {
+        let messageRef = db.collection(Constants.Collections.conversations)
+            .document(conversationID)
+            .collection(Constants.Collections.messages)
+            .document(messageID)
+
+        // Get current message
+        let doc = try await messageRef.getDocument()
+        guard var message = try? doc.data(as: Message.self) else {
+            throw MessageError.invalidData
+        }
+
+        // Toggle reaction
+        if var users = message.reactions[emoji] {
+            if users.contains(userID) {
+                // Remove reaction
+                users.removeAll { $0 == userID }
+                if users.isEmpty {
+                    message.reactions.removeValue(forKey: emoji)
+                } else {
+                    message.reactions[emoji] = users
+                }
+            } else {
+                // Add reaction
+                users.append(userID)
+                message.reactions[emoji] = users
+            }
+        } else {
+            // Add first reaction of this emoji
+            message.reactions[emoji] = [userID]
+        }
+
+        // Save updated message
+        try await messageRef.updateData([
+            "reactions": message.reactions
+        ])
+
+        print("✅ Toggled reaction \(emoji) for message \(messageID)")
+    }
+
+    // MARK: - Message Deletion
+
+    /// Soft delete a message (marks as deleted but keeps in database)
+    func deleteMessage(messageID: String, conversationID: String) async throws {
+        let messageRef = db.collection(Constants.Collections.conversations)
+            .document(conversationID)
+            .collection(Constants.Collections.messages)
+            .document(messageID)
+
+        try await messageRef.updateData([
+            "isDeleted": true,
+            "deletedAt": Timestamp(date: Date()),
+            "text": "[Message deleted]" // Optional: replace text
+        ])
+
+        print("✅ Deleted message \(messageID)")
+    }
+
+    // MARK: - Reply to Message
+
+    /// Send a reply to another message
+    func sendReply(to messageID: String, text: String, conversationID: String, senderID: String) async throws {
+        var newMessage = Message(
+            id: UUID().uuidString,
+            conversationID: conversationID,
+            senderID: senderID,
+            text: text,
+            timestamp: Date(),
+            status: .sent,
+            readBy: [senderID]
+        )
+        newMessage.replyTo = messageID
+
+        try await sendMessage(newMessage)
+        print("✅ Sent reply to message \(messageID)")
+    }
 }
 
 enum MessageError: LocalizedError {

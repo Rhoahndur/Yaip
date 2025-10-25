@@ -101,6 +101,9 @@ GoogleService-Info.plist
 .env
 .env.local
 
+# Configuration files (contains sensitive credentials)
+Config.xcconfig
+
 # IDEs
 .vscode/
 .idea/

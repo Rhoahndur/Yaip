@@ -1,0 +1,14 @@
+// Configuration file template for Yaip app
+// COPY THIS FILE to Config.xcconfig and fill in your values
+
+// N8N Webhook Configuration
+N8N_WEBHOOK_URL = https:/$()/your-name.app.n8n.cloud/webhook
+N8N_AUTH_TOKEN = your_secret_token_here
+
+// Instructions:
+// 1. Copy this file: cp Config.xcconfig.template Config.xcconfig
+// 2. Fill in your actual N8N webhook URL
+// 3. Fill in your secret token (generate with: openssl rand -base64 32)
+// 4. Config.xcconfig is in .gitignore and will NOT be committed
+
+// Note: The $() in the URL prevents Xcode from treating // as a comment

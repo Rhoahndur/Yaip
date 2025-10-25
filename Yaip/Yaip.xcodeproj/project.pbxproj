@@ -12,10 +12,12 @@
 		05EDEF602EA6EEEC004D7775 /* FirebaseFunctions in Frameworks */ = {isa = PBXBuildFile; productRef = 05EDEF5F2EA6EEEC004D7775 /* FirebaseFunctions */; };
 		05EDEF622EA6EEEC004D7775 /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = 05EDEF612EA6EEEC004D7775 /* FirebaseMessaging */; };
 		05EDEF642EA6EEEC004D7775 /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = 05EDEF632EA6EEEC004D7775 /* FirebaseStorage */; };
+		05EDEFEA2EAC30BF004D7775 /* Config.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = 05EDEFE92EAC30BF004D7775 /* Config.xcconfig */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		05EDEF4A2EA6EA8E004D7775 /* Yaip.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Yaip.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		05EDEFE92EAC30BF004D7775 /* Config.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config.xcconfig; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -60,6 +62,7 @@
 		05EDEF412EA6EA8E004D7775 = {
 			isa = PBXGroup;
 			children = (
+				05EDEFE92EAC30BF004D7775 /* Config.xcconfig */,
 				05EDEF4C2EA6EA8E004D7775 /* Yaip */,
 				05EDEF4B2EA6EA8E004D7775 /* Products */,
 			);
@@ -145,6 +148,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				05EDEFEA2EAC30BF004D7775 /* Config.xcconfig in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -163,6 +167,7 @@
 /* Begin XCBuildConfiguration section */
 		05EDEF532EA6EA90004D7775 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 05EDEFE92EAC30BF004D7775 /* Config.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -226,6 +231,7 @@
 		};
 		05EDEF542EA6EA90004D7775 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 05EDEFE92EAC30BF004D7775 /* Config.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -282,6 +288,7 @@
 		};
 		05EDEF562EA6EA90004D7775 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 05EDEFE92EAC30BF004D7775 /* Config.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -319,6 +326,7 @@
 		};
 		05EDEF572EA6EA90004D7775 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 05EDEFE92EAC30BF004D7775 /* Config.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
