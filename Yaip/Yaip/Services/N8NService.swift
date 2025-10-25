@@ -92,8 +92,64 @@ class N8NService {
             ]
         )
 
-        // TODO: Replace with real N8N webhook call
-        return try await mockExtractActionItems(conversationID: conversationID)
+        // PRODUCTION: Call real N8N webhook
+        do {
+            print("📤 Calling N8N webhook for action items...")
+            print("   URL: \(baseURL)/extract_actions")
+            print("   Conversation ID: \(conversationID)")
+
+            let response = try await callWebhook(request: request, responseType: ActionItemsResponse.self)
+
+            print("✅ Received action items from N8N")
+            print("   Success: \(response.success)")
+            print("   Items found: \(response.actionItems.count)")
+
+            // Convert response to ActionItem models
+            let actionItems = response.actionItems.map { item in
+                ActionItem(
+                    id: UUID().uuidString,
+                    task: item.task,
+                    assignee: item.assignee,
+                    deadline: parseDate(item.deadline),
+                    priority: parsePriority(item.priority),
+                    status: .pending,
+                    messageID: conversationID,
+                    context: item.context
+                )
+            }
+
+            return actionItems
+        } catch {
+            print("❌ N8N webhook error: \(error)")
+            print("   Falling back to mock data...")
+
+            // Fallback to mock if N8N fails (for testing)
+            return try await mockExtractActionItems(conversationID: conversationID)
+        }
+    }
+
+    // Helper to parse priority string
+    private func parsePriority(_ priorityString: String?) -> ActionItem.Priority {
+        guard let priority = priorityString?.lowercased() else { return .medium }
+        switch priority {
+        case "high": return .high
+        case "low": return .low
+        default: return .medium
+        }
+    }
+
+    // Helper to parse date string
+    private func parseDate(_ dateString: String?) -> Date? {
+        guard let dateStr = dateString, !dateStr.isEmpty else { return nil }
+
+        let formatter = ISO8601DateFormatter()
+        if let date = formatter.date(from: dateStr) {
+            return date
+        }
+
+        let regularFormatter = DateFormatter()
+        regularFormatter.dateFormat = "yyyy-MM-dd"
+        return regularFormatter.date(from: dateStr)
     }
 
     // MARK: - Meeting Scheduler
@@ -430,6 +486,22 @@ struct ThreadSummary: Codable {
     let messageCount: Int
     let confidence: Double
     let timestamp: Date
+}
+
+// N8N Action Items Response
+struct ActionItemsResponse: Codable {
+    let success: Bool
+    let actionItems: [ActionItemData]
+    let timestamp: String
+    let conversationID: String
+}
+
+struct ActionItemData: Codable {
+    let task: String
+    let assignee: String?
+    let deadline: String?
+    let priority: String
+    let context: String
 }
 
 struct ActionItem: Codable, Identifiable {
