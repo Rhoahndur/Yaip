@@ -12,6 +12,8 @@ struct SettingsView: View {
     @ObservedObject private var themeManager = ThemeManager.shared
     @Environment(\.dismiss) private var dismiss
     @State private var showLogoutConfirmation = false
+    @State private var showDeleteAccountAlert = false
+    @State private var isDeletingAccount = false
 
     var body: some View {
         NavigationStack {
@@ -102,6 +104,21 @@ struct SettingsView: View {
                     } label: {
                         Label("Sign Out", systemImage: "arrow.right.square")
                     }
+
+                    Button(role: .destructive) {
+                        showDeleteAccountAlert = true
+                    } label: {
+                        if isDeletingAccount {
+                            HStack {
+                                Label("Deleting Account...", systemImage: "trash")
+                                Spacer()
+                                ProgressView()
+                            }
+                        } else {
+                            Label("Delete Account", systemImage: "trash")
+                        }
+                    }
+                    .disabled(isDeletingAccount)
                 }
             }
             .navigationTitle("Settings")
@@ -124,6 +141,24 @@ struct SettingsView: View {
             } message: {
                 Text("Are you sure you want to sign out?")
             }
+            .alert("Delete Account", isPresented: $showDeleteAccountAlert) {
+                Button("Cancel", role: .cancel) { }
+                Button("Delete Permanently", role: .destructive) {
+                    deleteAccount()
+                }
+            } message: {
+                Text("""
+                This will permanently delete:
+
+                • Your profile and account information
+                • All your messages in conversations
+                • Your profile picture
+                • Calendar integrations
+                • All app data and preferences
+
+                This action cannot be undone. Your account and all associated data will be permanently removed.
+                """)
+            }
             .preferredColorScheme(themeManager.currentTheme.colorScheme)
             .animation(.easeInOut(duration: 0.3), value: themeManager.currentTheme)
         }
@@ -143,6 +178,21 @@ struct SettingsView: View {
 
     private var appVersion: String {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
+    }
+
+    private func deleteAccount() {
+        isDeletingAccount = true
+
+        Task {
+            do {
+                try await authManager.deleteAccount()
+                dismiss()
+            } catch {
+                print("❌ Error deleting account: \(error)")
+                // Show error to user
+                isDeletingAccount = false
+            }
+        }
     }
 }
 

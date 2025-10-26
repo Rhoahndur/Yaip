@@ -212,7 +212,106 @@ class AuthManager: ObservableObject {
     func resetPassword(email: String) async throws {
         try await Auth.auth().sendPasswordReset(withEmail: email)
     }
-    
+
+    /// Delete user account and all associated data
+    func deleteAccount() async throws {
+        guard let userID = currentUserID else {
+            throw NSError(domain: "AuthManager", code: 401, userInfo: [NSLocalizedDescriptionKey: "No user signed in"])
+        }
+
+        print("🗑️ Starting account deletion for user: \(userID)")
+
+        // Stop message listeners
+        MessageListenerService.shared.stopListening()
+        print("✅ Stopped message listeners")
+
+        // 1. Delete profile image from Firebase Storage
+        if let profileImageURL = user?.profileImageURL {
+            print("🗑️ Deleting profile image...")
+            try? await StorageService.shared.deleteImage(url: profileImageURL)
+            print("✅ Profile image deleted")
+        }
+
+        // 2. Delete all messages from conversations where user is a participant
+        print("🗑️ Deleting user messages...")
+        try? await deleteUserMessages(userID: userID)
+        print("✅ User messages deleted")
+
+        // 3. Delete user's conversations (or remove user from participant list)
+        print("🗑️ Cleaning up conversations...")
+        try? await cleanupUserConversations(userID: userID)
+        print("✅ Conversations cleaned up")
+
+        // 4. Delete user document from Firestore
+        print("🗑️ Deleting user document...")
+        try await db.collection(Constants.Collections.users)
+            .document(userID)
+            .delete()
+        print("✅ User document deleted")
+
+        // 5. Clear local storage
+        print("🗑️ Clearing local storage...")
+        try? await LocalStorageManager.shared.clearAll()
+        print("✅ Local storage cleared")
+
+        // 6. Clear user cache
+        UserService.shared.clearCache()
+
+        // 7. Delete Firebase Auth account (must be last)
+        print("🗑️ Deleting Firebase Auth account...")
+        try await Auth.auth().currentUser?.delete()
+        print("✅ Firebase Auth account deleted")
+
+        // Update state
+        await MainActor.run {
+            self.user = nil
+            self.isAuthenticated = false
+        }
+
+        print("✅ Account deletion complete")
+    }
+
+    /// Delete all messages sent by the user
+    private func deleteUserMessages(userID: String) async throws {
+        // Query all messages sent by this user
+        let snapshot = try await db.collectionGroup(Constants.Collections.messages)
+            .whereField("senderID", isEqualTo: userID)
+            .getDocuments()
+
+        print("📝 Found \(snapshot.documents.count) messages to delete")
+
+        // Delete each message
+        for document in snapshot.documents {
+            try await document.reference.delete()
+        }
+    }
+
+    /// Clean up conversations where user was a participant
+    private func cleanupUserConversations(userID: String) async throws {
+        // Query all conversations where user is a participant
+        let snapshot = try await db.collection(Constants.Collections.conversations)
+            .whereField("participantIDs", arrayContains: userID)
+            .getDocuments()
+
+        print("💬 Found \(snapshot.documents.count) conversations to clean up")
+
+        for document in snapshot.documents {
+            // Check if this is a 1-on-1 conversation (2 participants)
+            if let participantIDs = document.data()["participantIDs"] as? [String],
+               participantIDs.count == 2 {
+                // Delete the entire conversation if it's 1-on-1
+                try await document.reference.delete()
+                print("🗑️ Deleted 1-on-1 conversation: \(document.documentID)")
+            } else {
+                // For group chats, just remove the user from participants
+                try await document.reference.updateData([
+                    "participantIDs": FieldValue.arrayRemove([userID])
+                ])
+                print("👥 Removed user from group conversation: \(document.documentID)")
+            }
+        }
+    }
+
     deinit {
         if let handle = authStateHandle {
             Auth.auth().removeStateDidChangeListener(handle)

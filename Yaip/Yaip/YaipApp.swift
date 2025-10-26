@@ -9,7 +9,6 @@ import SwiftUI
 import FirebaseCore
 import SwiftData
 import GoogleSignIn
-import MSAL
 
 @main
 struct YaipApp: App {
@@ -52,12 +51,12 @@ struct YaipApp: App {
             return
         }
 
-        // Check if it's a Microsoft MSAL URL
-        if url.scheme?.hasPrefix("msauth") == true {
-            MSALPublicClientApplication.handleMSALResponse(url, sourceApplication: nil)
-            print("✅ URL handled by MSAL")
-            return
-        }
+        // TODO: Add Microsoft MSAL URL handling when Outlook integration is added
+        // if url.scheme?.hasPrefix("msauth") == true {
+        //     MSALPublicClientApplication.handleMSALResponse(url, sourceApplication: nil)
+        //     print("✅ URL handled by MSAL")
+        //     return
+        // }
 
         print("⚠️ URL not recognized by any OAuth provider")
     }
