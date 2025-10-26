@@ -43,9 +43,11 @@ struct MeetingSuggestionsView: View {
                 }
             }
             .alert("Event Created", isPresented: $viewModel.showEventCreatedAlert) {
-                Button("OK", role: .cancel) { }
+                Button("Done") {
+                    dismiss()
+                }
             } message: {
-                Text("The meeting has been added to your calendar.")
+                Text("✓ The meeting has been added to your calendar.")
             }
             .alert("Error", isPresented: $viewModel.showEventErrorAlert) {
                 Button("OK", role: .cancel) { }
@@ -285,7 +287,7 @@ struct TimeSlotCard: View {
                     }
                 }
 
-                // Team availability
+                // Team availability (only show if we have data)
                 if !timeSlot.available.isEmpty {
                     HStack {
                         VStack(alignment: .leading, spacing: 4) {
@@ -297,6 +299,19 @@ struct TimeSlotCard: View {
                             Text(timeSlot.available.joined(separator: ", "))
                                 .font(.caption)
                         }
+
+                        Spacer()
+                    }
+                } else if timeSlot.isUserFree != nil {
+                    // Show message if we only have user's calendar data
+                    HStack {
+                        Image(systemName: "info.circle")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+
+                        Text("Team availability not checked")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
 
                         Spacer()
                     }

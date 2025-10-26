@@ -7,6 +7,7 @@
 
 import Foundation
 import Combine
+import FirebaseFirestore
 
 @MainActor
 class AIFeaturesViewModel: ObservableObject {
@@ -147,18 +148,29 @@ class AIFeaturesViewModel: ObservableObject {
                     context: context
                 )
 
+                // Get real participant names from the conversation
+                let participantNames = await fetchParticipantNames()
+
                 // Enhance with calendar availability if any provider is authorized
                 if CalendarManager.shared.hasAnyProviderConnected {
                     let enrichedTimeSlots = await CalendarManager.shared.checkAvailability(
                         for: suggestion.suggestedTimes
                     )
 
-                    // Update suggestion with calendar-aware time slots
+                    // Update suggestion with calendar-aware time slots AND real participants
                     suggestion = MeetingSuggestion(
                         detectedIntent: suggestion.detectedIntent,
                         suggestedTimes: enrichedTimeSlots,
                         duration: suggestion.duration,
-                        participants: suggestion.participants
+                        participants: participantNames
+                    )
+                } else {
+                    // Just update participants
+                    suggestion = MeetingSuggestion(
+                        detectedIntent: suggestion.detectedIntent,
+                        suggestedTimes: suggestion.suggestedTimes,
+                        duration: suggestion.duration,
+                        participants: participantNames
                     )
                 }
 
@@ -170,6 +182,48 @@ class AIFeaturesViewModel: ObservableObject {
             }
 
             self.isLoadingMeeting = false
+        }
+    }
+
+    /// Fetch participant display names from the conversation
+    private func fetchParticipantNames() async -> [String] {
+        do {
+            // Fetch conversation from Firestore
+            let db = Firestore.firestore()
+            let conversationDoc = try await db.collection(Constants.Collections.conversations)
+                .document(conversationID)
+                .getDocument()
+
+            guard let data = conversationDoc.data(),
+                  let participantIDs = data["participantIDs"] as? [String] else {
+                print("⚠️ No participants found in conversation")
+                return []
+            }
+
+            print("📋 Found \(participantIDs.count) participants in conversation")
+
+            // Fetch each participant's display name
+            var names: [String] = []
+            for userID in participantIDs {
+                let userDoc = try await db.collection(Constants.Collections.users)
+                    .document(userID)
+                    .getDocument()
+
+                if let userData = userDoc.data(),
+                   let displayName = userData["displayName"] as? String {
+                    names.append(displayName)
+                } else {
+                    // Fallback to "User" if name not found
+                    names.append("User")
+                }
+            }
+
+            print("✅ Fetched participant names: \(names.joined(separator: ", "))")
+            return names
+
+        } catch {
+            print("❌ Error fetching participant names: \(error)")
+            return []
         }
     }
 
@@ -190,10 +244,7 @@ class AIFeaturesViewModel: ObservableObject {
             }
 
             isCreatingEvent = false
-
-            // Close the modal after a delay
-            try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
-            showMeetingSuggestion = false
+            // Don't auto-close - let user dismiss the alert manually
         }
     }
 

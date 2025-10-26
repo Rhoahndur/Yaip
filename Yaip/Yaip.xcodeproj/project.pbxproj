@@ -15,6 +15,7 @@
 		05EDEFEA2EAC30BF004D7775 /* Config.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = 05EDEFE92EAC30BF004D7775 /* Config.xcconfig */; };
 		05EDF00E2EAD39E9004D7775 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = 05EDF00D2EAD39E9004D7775 /* GoogleSignIn */; };
 		05EDF0102EAD39E9004D7775 /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 05EDF00F2EAD39E9004D7775 /* GoogleSignInSwift */; };
+		05EDF0132EAEE7B8004D7775 /* FirebaseDatabase in Frameworks */ = {isa = PBXBuildFile; productRef = 05EDF0122EAEE7B8004D7775 /* FirebaseDatabase */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -56,6 +57,7 @@
 				05EDEF5C2EA6EEEC004D7775 /* FirebaseAuth in Frameworks */,
 				05EDEF642EA6EEEC004D7775 /* FirebaseStorage in Frameworks */,
 				05EDEF5E2EA6EEEC004D7775 /* FirebaseFirestore in Frameworks */,
+				05EDF0132EAEE7B8004D7775 /* FirebaseDatabase in Frameworks */,
 				05EDF00E2EAD39E9004D7775 /* GoogleSignIn in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -68,6 +70,7 @@
 			children = (
 				05EDEFE92EAC30BF004D7775 /* Config.xcconfig */,
 				05EDEF4C2EA6EA8E004D7775 /* Yaip */,
+				05EDF0112EAEE7B8004D7775 /* Frameworks */,
 				05EDEF4B2EA6EA8E004D7775 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -78,6 +81,13 @@
 				05EDEF4A2EA6EA8E004D7775 /* Yaip.app */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		05EDF0112EAEE7B8004D7775 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -107,6 +117,7 @@
 				05EDEF632EA6EEEC004D7775 /* FirebaseStorage */,
 				05EDF00D2EAD39E9004D7775 /* GoogleSignIn */,
 				05EDF00F2EAD39E9004D7775 /* GoogleSignInSwift */,
+				05EDF0122EAEE7B8004D7775 /* FirebaseDatabase */,
 			);
 			productName = Yaip;
 			productReference = 05EDEF4A2EA6EA8E004D7775 /* Yaip.app */;
@@ -446,6 +457,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 05EDF00C2EAD39E9004D7775 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
 			productName = GoogleSignInSwift;
+		};
+		05EDF0122EAEE7B8004D7775 /* FirebaseDatabase */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 05EDEF5A2EA6EEEC004D7775 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseDatabase;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

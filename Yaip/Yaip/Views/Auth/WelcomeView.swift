@@ -16,11 +16,11 @@ struct WelcomeView: View {
             Spacer()
             
             // App Logo/Branding
-            Image(systemName: "message.fill")
+            Image("AppIconImage")
                 .resizable()
                 .scaledToFit()
                 .frame(width: 100, height: 100)
-                .foregroundStyle(.blue)
+                .cornerRadius(20)
             
             Text("Yaip")
                 .font(.system(size: 48, weight: .bold))
