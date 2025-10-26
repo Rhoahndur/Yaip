@@ -170,7 +170,7 @@ struct ProfileSettingsView: View {
                 try await UserService.shared.updateProfilePhoto(userID: userID, photoURL: photoURL)
 
                 // Update local user object
-                await authManager.refreshCurrentUser()
+                authManager.refreshCurrentUser()
 
                 await MainActor.run {
                     isUploading = false
@@ -198,7 +198,7 @@ struct ProfileSettingsView: View {
                 }
 
                 // Refresh current user data
-                await authManager.refreshCurrentUser()
+                authManager.refreshCurrentUser()
 
                 await MainActor.run {
                     isSaving = false

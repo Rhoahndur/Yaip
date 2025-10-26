@@ -146,6 +146,29 @@ class AppleCalendarService: ObservableObject, CalendarProvider {
         return calendar.date(from: components) ?? date
     }
 
+    /// Create a calendar event
+    func createEvent(title: String, startDate: Date, endDate: Date, notes: String? = nil) async throws -> String {
+        guard isAuthorized else {
+            throw CalendarError.notAuthorized
+        }
+
+        let event = EKEvent(eventStore: eventStore)
+        event.title = title
+        event.startDate = startDate
+        event.endDate = endDate
+        event.notes = notes
+        event.calendar = eventStore.defaultCalendarForNewEvents
+
+        do {
+            try eventStore.save(event, span: .thisEvent)
+            print("✅ Created calendar event: \(title) on \(startDate.formatted())")
+            return event.eventIdentifier
+        } catch {
+            print("❌ Failed to create calendar event: \(error)")
+            throw CalendarError.notSupported("Failed to create event: \(error.localizedDescription)")
+        }
+    }
+
     /// Disconnect from Apple Calendar (not applicable - managed by system)
     func disconnect() async throws {
         // Apple Calendar permissions are managed by iOS Settings

@@ -51,6 +51,12 @@ class AIFeaturesViewModel: ObservableObject {
     @Published var showPriority = false
     @Published var showSearch = false
 
+    // Calendar event creation
+    @Published var isCreatingEvent = false
+    @Published var showEventCreatedAlert = false
+    @Published var showEventErrorAlert = false
+    @Published var eventCreationError: String?
+
     private let n8nService = N8NService.shared
     private let conversationID: String
     private var cancellables = Set<AnyCancellable>()
@@ -170,10 +176,101 @@ class AIFeaturesViewModel: ObservableObject {
     func selectTimeSlot(_ timeSlot: TimeSlot) {
         print("📅 Selected time slot: \(timeSlot.date.formatted()) at \(timeSlot.startTime)")
 
-        // TODO: Create calendar event
-        // TODO: Send confirmation message to chat
+        isCreatingEvent = true
+        eventCreationError = nil
 
-        showMeetingSuggestion = false
+        Task {
+            let success = await createCalendarEvent(for: timeSlot)
+
+            if success {
+                await sendConfirmationMessage(for: timeSlot)
+                showEventCreatedAlert = true
+            } else {
+                showEventErrorAlert = true
+            }
+
+            isCreatingEvent = false
+
+            // Close the modal after a delay
+            try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+            showMeetingSuggestion = false
+        }
+    }
+
+    private func createCalendarEvent(for timeSlot: TimeSlot) async -> Bool {
+        guard let suggestion = meetingSuggestion else {
+            print("⚠️ No meeting suggestion available")
+            eventCreationError = "No meeting information available"
+            return false
+        }
+
+        // Check if Apple Calendar is authorized
+        guard AppleCalendarService.shared.isAuthorized else {
+            print("⚠️ Calendar access not authorized")
+            eventCreationError = "Calendar access not granted. Please enable calendar access in Settings."
+            return false
+        }
+
+        // Combine date and time into start/end dates
+        let startDate = combineDateAndTime(date: timeSlot.date, time: timeSlot.startTime)
+        let endDate = combineDateAndTime(date: timeSlot.date, time: timeSlot.endTime)
+
+        // Create calendar event using EventKit
+        do {
+            let eventID = try await AppleCalendarService.shared.createEvent(
+                title: suggestion.detectedIntent,
+                startDate: startDate,
+                endDate: endDate,
+                notes: "Scheduled via Yaip\nParticipants: \(suggestion.participants.joined(separator: ", "))"
+            )
+            print("✅ Calendar event created: \(eventID)")
+            return true
+        } catch {
+            print("❌ Failed to create calendar event: \(error)")
+            eventCreationError = error.localizedDescription
+            return false
+        }
+    }
+
+    private func sendConfirmationMessage(for timeSlot: TimeSlot) async {
+        guard let suggestion = meetingSuggestion else { return }
+
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+
+        let startDate = combineDateAndTime(date: timeSlot.date, time: timeSlot.startTime)
+
+        let confirmationText = """
+        📅 Meeting scheduled: \(suggestion.detectedIntent)
+        🗓 \(formatter.string(from: startDate))
+        ⏱ Duration: \(suggestion.duration) minutes
+        👥 Participants: \(suggestion.participants.joined(separator: ", "))
+        """
+
+        // TODO: Send this as a message to the conversation
+        print("💬 Confirmation message: \(confirmationText)")
+    }
+
+    /// Combine date and time string into a single Date
+    private func combineDateAndTime(date: Date, time: String) -> Date {
+        let calendar = Calendar.current
+        let dateComponents = calendar.dateComponents([.year, .month, .day], from: date)
+
+        // Parse time string (e.g., "14:00")
+        let timeComponents = time.split(separator: ":")
+        guard timeComponents.count == 2,
+              let hour = Int(timeComponents[0]),
+              let minute = Int(timeComponents[1]) else {
+            return date
+        }
+
+        var components = dateComponents
+        components.hour = hour
+        components.minute = minute
+        components.second = 0
+
+        return calendar.date(from: components) ?? date
     }
 
     // MARK: - Decision Tracking

@@ -35,7 +35,7 @@ class AuthManager: ObservableObject {
     }
 
     /// Refresh current user data from Firestore
-    func refreshCurrentUser() async {
+    func refreshCurrentUser() {
         guard let userID = currentUserID else { return }
         fetchUserProfile(userID: userID)
     }

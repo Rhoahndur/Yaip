@@ -20,6 +20,15 @@ struct YaipApp: App {
         // Initialize Firebase
         FirebaseApp.configure()
 
+        // Configure Google Sign-In
+        if let clientID = FirebaseApp.app()?.options.clientID {
+            let config = GIDConfiguration(clientID: clientID)
+            GIDSignIn.sharedInstance.configuration = config
+            print("✅ Google Sign-In configured with client ID: \(clientID)")
+        } else {
+            print("⚠️ Google Sign-In client ID not found in Firebase configuration")
+        }
+
         // Initialize LocalStorageManager (SwiftData)
         _ = LocalStorageManager.shared
 

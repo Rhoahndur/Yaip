@@ -42,6 +42,37 @@ struct MeetingSuggestionsView: View {
                     }
                 }
             }
+            .alert("Event Created", isPresented: $viewModel.showEventCreatedAlert) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text("The meeting has been added to your calendar.")
+            }
+            .alert("Error", isPresented: $viewModel.showEventErrorAlert) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text(viewModel.eventCreationError ?? "Failed to create calendar event.")
+            }
+            .overlay {
+                if viewModel.isCreatingEvent {
+                    ZStack {
+                        Color.black.opacity(0.3)
+                            .ignoresSafeArea()
+
+                        VStack(spacing: 16) {
+                            ProgressView()
+                                .scaleEffect(1.5)
+
+                            Text("Creating calendar event...")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding(32)
+                        .background(Color(.systemBackground))
+                        .cornerRadius(16)
+                        .shadow(radius: 10)
+                    }
+                }
+            }
         }
     }
 

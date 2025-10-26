@@ -41,8 +41,8 @@ class GoogleCalendarService: ObservableObject, CalendarProvider {
     /// Request access to Google Calendar
     func requestAccess() async throws -> Bool {
         // Get the root view controller for presenting the sign-in UI
-        guard let windowScene = await UIApplication.shared.connectedScenes.first as? UIWindowScene,
-              let rootViewController = await windowScene.windows.first?.rootViewController else {
+        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+              let rootViewController = windowScene.windows.first?.rootViewController else {
             throw CalendarError.notSupported("Unable to present sign-in UI")
         }
 
@@ -62,9 +62,9 @@ class GoogleCalendarService: ObservableObject, CalendarProvider {
                         } else {
                             // Need to request additional scope
                             print("🔄 Requesting additional calendar scope...")
-                            let user = try await currentUser.addScopes([calendarScope], presenting: rootViewController)
+                            let result = try await currentUser.addScopes([calendarScope], presenting: rootViewController)
                             self.isAuthorized = true
-                            self.userEmail = user.profile?.email
+                            self.userEmail = result.user.profile?.email
                             print("✅ Google Calendar scope granted")
                             continuation.resume(returning: true)
                             return
@@ -105,10 +105,7 @@ class GoogleCalendarService: ObservableObject, CalendarProvider {
         }
 
         // Get access token
-        guard let accessToken = user.accessToken.tokenString else {
-            print("⚠️ No access token available")
-            return timeSlots
-        }
+        let accessToken = user.accessToken.tokenString
 
         // Get date range from time slots
         guard let firstSlot = timeSlots.first, let lastSlot = timeSlots.last else {
