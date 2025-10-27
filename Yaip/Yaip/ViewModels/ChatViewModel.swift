@@ -442,7 +442,16 @@ class ChatViewModel: ObservableObject {
                 conversationID: conversationID,
                 lastMessage: lastMessage
             )
-            
+
+            // Increment unread count for all other participants
+            let otherParticipants = conversation.participants.filter { $0 != currentUserID }
+            if !otherParticipants.isEmpty {
+                try? await conversationService.incrementUnreadCount(
+                    conversationID: conversationID,
+                    for: otherParticipants
+                )
+            }
+
         } catch {
             // Failed - mark for retry
             if let index = messages.firstIndex(where: { $0.id == messageID }) {
@@ -613,21 +622,32 @@ class ChatViewModel: ObservableObject {
             let unreadMessageIDs = messages
                 .filter { !$0.readBy.contains(currentUserID) }
                 .compactMap { $0.id }
-            
-            guard !unreadMessageIDs.isEmpty else { 
+
+            guard !unreadMessageIDs.isEmpty else {
                 print("📖 No unread messages to mark")
-                return 
+                // Still reset conversation unread count to 0 (in case out of sync)
+                try? await conversationService.markAsRead(
+                    conversationID: conversationID,
+                    userID: currentUserID
+                )
+                return
             }
-            
+
             // print("📖 Marking \(unreadMessageIDs.count) messages as read: \(unreadMessageIDs)")
-            
+
             do {
                 try await messageService.markMessagesAsRead(
                     conversationID: conversationID,
                     messageIDs: unreadMessageIDs,
                     userID: currentUserID
                 )
-                
+
+                // Also reset the conversation-level unread count
+                try await conversationService.markAsRead(
+                    conversationID: conversationID,
+                    userID: currentUserID
+                )
+
                 // Immediately update local state to reflect read status
                 await MainActor.run {
                     for id in unreadMessageIDs {
@@ -643,7 +663,7 @@ class ChatViewModel: ObservableObject {
                         }
                     }
                 }
-                
+
                 print("✅ Successfully marked messages as read")
             } catch {
                 print("❌ Error marking messages as read: \(error.localizedDescription)")

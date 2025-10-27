@@ -99,6 +99,21 @@ class ConversationService {
                 "unreadCount.\(userID)": 0
             ])
     }
+
+    /// Increment unread count for specific users (when a new message is sent)
+    func incrementUnreadCount(conversationID: String, for userIDs: [String]) async throws {
+        guard !userIDs.isEmpty else { return }
+
+        // Create update data to increment unread count for each user
+        var updateData: [String: Any] = [:]
+        for userID in userIDs {
+            updateData["unreadCount.\(userID)"] = FieldValue.increment(Int64(1))
+        }
+
+        try await db.collection(Constants.Collections.conversations)
+            .document(conversationID)
+            .updateData(updateData)
+    }
 }
 
 enum ConversationError: LocalizedError {
