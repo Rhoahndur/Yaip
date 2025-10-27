@@ -64,6 +64,11 @@ struct ProfileSettingsView: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 8)
 
+                    // Tap hint
+                    Text("Tap to change photo")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
                     if isUploading {
                         ProgressView("Uploading photo...")
                             .font(.caption)
@@ -114,7 +119,7 @@ struct ProfileSettingsView: View {
         .navigationTitle("Edit Profile")
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showImagePicker) {
-            ImagePicker(selectedImage: $selectedImage)
+            ProfilePhotoPickerSheet(selectedImage: $selectedImage)
         }
         .alert("Profile Updated", isPresented: $showSuccessAlert) {
             Button("OK") {

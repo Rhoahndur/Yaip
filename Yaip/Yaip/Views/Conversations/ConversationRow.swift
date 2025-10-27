@@ -14,6 +14,8 @@ struct ConversationRow: View {
     @State private var otherUserStatus: UserStatus = .offline
     @State private var displayName: String = "Loading..."
     @State private var statusListener: ListenerRegistration?
+    @State private var showUserProfile = false
+    @State private var otherUser: User?
     @ObservedObject private var networkMonitor = NetworkMonitor.shared
     
     // Check if this conversation has unread messages
@@ -24,7 +26,7 @@ struct ConversationRow: View {
     
     var body: some View {
         HStack(spacing: 16) {
-            // Avatar with online status badge
+            // Avatar with online status badge (tappable for 1-on-1)
             ZStack(alignment: .bottomTrailing) {
                 Circle()
                     .fill(LinearGradient(
@@ -33,7 +35,7 @@ struct ConversationRow: View {
                         endPoint: .bottomTrailing
                     ))
                     .frame(width: 56, height: 56)
-                
+
                 if let imageURL = conversation.imageURL, let url = URL(string: imageURL) {
                     AsyncImage(url: url) { image in
                         image
@@ -51,7 +53,7 @@ struct ConversationRow: View {
                         .foregroundStyle(.white)
                         .font(.title2)
                 }
-                
+
                 // Online status badge (only for 1-on-1 chats and when we're online)
                 if conversation.type == .oneOnOne && networkMonitor.isConnected {
                     OnlineStatusBadge(status: otherUserStatus, size: 16)
@@ -60,6 +62,12 @@ struct ConversationRow: View {
                                 .stroke(Color(.systemBackground), lineWidth: 2)
                         )
                         .offset(x: 3, y: 3)
+                }
+            }
+            .onTapGesture {
+                // Only show profile for 1-on-1 chats
+                if conversation.type == .oneOnOne, let user = otherUser {
+                    showUserProfile = true
                 }
             }
             
@@ -138,6 +146,11 @@ struct ConversationRow: View {
             statusListener?.remove()
             statusListener = nil
         }
+        .sheet(isPresented: $showUserProfile) {
+            if let user = otherUser {
+                UserProfileModal(user: user)
+            }
+        }
     }
     
     private func loadConversationDetails() async {
@@ -159,7 +172,8 @@ struct ConversationRow: View {
                 let user = try await UserService.shared.fetchUser(id: otherUserID)
                 displayName = user.displayName
                 otherUserStatus = user.status
-                
+                otherUser = user // Store full user object for profile modal
+
                 // 🔥 Set up real-time status listener
                 setupStatusListener(for: otherUserID)
             } catch {

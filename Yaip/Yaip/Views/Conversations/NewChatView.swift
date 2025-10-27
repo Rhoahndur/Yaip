@@ -19,6 +19,8 @@ struct NewChatView: View {
     @State private var groupName = ""
     @State private var navigateToPendingChat = false
     @State private var pendingConversation: PendingConversation?
+    @State private var showUserProfile = false
+    @State private var selectedUserForProfile: User?
     
     var body: some View {
         NavigationStack {
@@ -151,11 +153,18 @@ struct NewChatView: View {
                 } else {
                     List {
                         ForEach(viewModel.users) { user in
-                            UserRow(user: user, isSelected: selectedUsers.contains(user))
-                                .contentShape(Rectangle())
-                                .onTapGesture {
-                                    handleUserTap(user)
+                            UserRow(
+                                user: user,
+                                isSelected: selectedUsers.contains(user),
+                                onAvatarTap: {
+                                    selectedUserForProfile = user
+                                    showUserProfile = true
                                 }
+                            )
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                handleUserTap(user)
+                            }
                         }
                     }
                     .listStyle(.plain)
@@ -207,6 +216,11 @@ struct NewChatView: View {
                 // In production, you'd only search on user input
                 if viewModel.searchText.isEmpty {
                     await viewModel.fetchAllUsers()
+                }
+            }
+            .sheet(isPresented: $showUserProfile) {
+                if let user = selectedUserForProfile {
+                    UserProfileModal(user: user)
                 }
             }
         }
@@ -316,15 +330,16 @@ struct NewChatView: View {
 struct UserRow: View {
     let user: User
     let isSelected: Bool
-    
+    var onAvatarTap: (() -> Void)?
+
     var body: some View {
         HStack(spacing: 12) {
-            // Avatar
+            // Avatar (tappable to view profile)
             ZStack {
                 Circle()
                     .fill(Color.gray.opacity(0.3))
                     .frame(width: 44, height: 44)
-                
+
                 if let imageURL = user.profileImageURL, let url = URL(string: imageURL) {
                     AsyncImage(url: url) { image in
                         image
@@ -341,6 +356,9 @@ struct UserRow: View {
                         .foregroundStyle(.gray)
                         .font(.title2)
                 }
+            }
+            .onTapGesture {
+                onAvatarTap?()
             }
             
             // User info

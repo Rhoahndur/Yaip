@@ -42,13 +42,13 @@ class PresenceService {
         let presenceRef = realtimeDB.child("presence").child(userID)
 
         // When connection is lost, automatically set to offline
-        presenceRef.onDisconnectUpdateChildValues([
+        try await presenceRef.onDisconnectUpdateChildValues([
             "status": "offline",
             "lastSeen": ServerValue.timestamp()
         ])
 
         // Set online in Realtime DB
-        presenceRef.setValue([
+        try await presenceRef.setValue([
             "status": "online",
             "lastSeen": ServerValue.timestamp()
         ])
@@ -77,13 +77,13 @@ class PresenceService {
 
         // Update Realtime DB
         let presenceRef = realtimeDB.child("presence").child(userID)
-        presenceRef.setValue([
+        try await presenceRef.setValue([
             "status": "offline",
             "lastSeen": ServerValue.timestamp()
         ])
 
         // Cancel disconnect handler
-        presenceRef.onDisconnectRemoveValue()
+        try await presenceRef.onDisconnectRemoveValue()
 
         print("✅ User \(userID) set to OFFLINE")
     }
@@ -100,7 +100,7 @@ class PresenceService {
 
         // Also update Realtime DB for consistency
         let presenceRef = realtimeDB.child("presence").child(userID)
-        presenceRef.updateChildValues([
+        try await presenceRef.updateChildValues([
             "status": status.rawValue,
             "lastSeen": ServerValue.timestamp()
         ])
