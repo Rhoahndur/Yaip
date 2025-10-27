@@ -107,6 +107,7 @@ class MessageIndexingService {
     /// Backfill all unindexed messages in a conversation
     func backfillConversation(conversationID: String, limit: Int? = nil) async {
         print("🔄 Starting backfill for conversation \(conversationID)")
+        print("   Limit: \(limit?.description ?? "none")")
 
         do {
             var query: Query = db
@@ -120,7 +121,13 @@ class MessageIndexingService {
             }
 
             let snapshot = try await query.getDocuments()
-            print("📋 Found \(snapshot.documents.count) messages to backfill")
+            print("📋 Found \(snapshot.documents.count) messages in Firestore to backfill")
+
+            // Debug: show first few message IDs
+            if snapshot.documents.count > 0 {
+                let firstFew = snapshot.documents.prefix(3).map { $0.documentID }
+                print("   First messages: \(firstFew.joined(separator: ", "))")
+            }
 
             var indexed = 0
             var skipped = 0
@@ -146,7 +153,11 @@ class MessageIndexingService {
                 }
             }
 
-            print("✅ Backfill complete: \(indexed) indexed, \(skipped) skipped, \(failed) failed")
+            print("✅ Backfill complete for \(conversationID):")
+            print("   📊 Total: \(snapshot.documents.count) messages")
+            print("   ✅ Indexed: \(indexed)")
+            print("   ⏭️  Skipped: \(skipped)")
+            print("   ❌ Failed: \(failed)")
 
         } catch {
             print("❌ Backfill failed for conversation \(conversationID): \(error)")
@@ -231,16 +242,26 @@ class MessageIndexingService {
 
         request.httpBody = try JSONSerialization.data(withJSONObject: payload)
 
-        let (_, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await URLSession.shared.data(for: request)
 
         guard let httpResponse = response as? HTTPURLResponse else {
             throw NSError(domain: "MessageIndexingService", code: -2,
                          userInfo: [NSLocalizedDescriptionKey: "Invalid HTTP response"])
         }
 
+        print("📥 Ingestion response: HTTP \(httpResponse.statusCode)")
+
         guard (200...299).contains(httpResponse.statusCode) else {
+            if let errorString = String(data: data, encoding: .utf8) {
+                print("❌ Ingestion error response: \(errorString)")
+            }
             throw NSError(domain: "MessageIndexingService", code: httpResponse.statusCode,
                          userInfo: [NSLocalizedDescriptionKey: "HTTP error: \(httpResponse.statusCode)"])
+        }
+
+        // Log the response body to see if it actually worked
+        if let responseString = String(data: data, encoding: .utf8) {
+            print("📄 Ingestion response body: \(responseString)")
         }
     }
 }
