@@ -162,21 +162,60 @@ struct SmartSearchView: View {
     }
 
     private var noResultsView: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "doc.text.magnifyingglass")
-                .font(.system(size: 48))
-                .foregroundStyle(.secondary)
+        VStack(spacing: 20) {
+            Image(systemName: "message.badge.waveform")
+                .font(.system(size: 64))
+                .foregroundStyle(.purple.opacity(0.5))
 
-            Text("No Results Found")
-                .font(.headline)
+            VStack(spacing: 8) {
+                Text("Nothing to Search Yet")
+                    .font(.title2)
+                    .fontWeight(.semibold)
 
-            Text("Try different keywords or rephrase your search")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal)
+                Text("Keep chatting to build your searchable history")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 12) {
+                    Image(systemName: "bubble.left.and.bubble.right")
+                        .font(.title3)
+                        .foregroundStyle(.purple)
+                        .frame(width: 32)
+
+                    Text("Send messages in this conversation")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+
+                HStack(spacing: 12) {
+                    Image(systemName: "arrow.triangle.2.circlepath")
+                        .font(.title3)
+                        .foregroundStyle(.purple)
+                        .frame(width: 32)
+
+                    Text("Tap 'Index Messages' in AI Features menu")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+
+                HStack(spacing: 12) {
+                    Image(systemName: "sparkles")
+                        .font(.title3)
+                        .foregroundStyle(.purple)
+                        .frame(width: 32)
+
+                    Text("Start searching with AI-powered search")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .padding()
         }
         .frame(maxHeight: .infinity)
+        .padding()
     }
 
     private var searchResultsList: some View {

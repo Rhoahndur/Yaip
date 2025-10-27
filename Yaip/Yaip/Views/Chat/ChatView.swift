@@ -274,6 +274,19 @@ struct ChatView: View {
                             } label: {
                                 Label("Smart Search", systemImage: "magnifyingglass")
                             }
+
+                            Button {
+                                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                Task {
+                                    guard let conversationID = conversation.id else { return }
+                                    await MessageIndexingService.shared.backfillConversation(
+                                        conversationID: conversationID,
+                                        limit: 100
+                                    )
+                                }
+                            } label: {
+                                Label("Index Messages", systemImage: "arrow.triangle.2.circlepath")
+                            }
                         }
                     } label: {
                         ZStack {

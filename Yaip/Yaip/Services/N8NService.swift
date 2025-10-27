@@ -400,7 +400,7 @@ class N8NService {
             var urlRequest = URLRequest(url: url)
             urlRequest.httpMethod = "POST"
             urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            urlRequest.setValue("Bearer \(authToken)", forHTTPHeaderField: "Authorization")
+            urlRequest.setValue(authToken, forHTTPHeaderField: "Authorization")
             urlRequest.timeoutInterval = 30
 
             // Request body format for RAG search webhook

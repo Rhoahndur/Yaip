@@ -412,8 +412,15 @@ class AIFeaturesViewModel: ObservableObject {
 
                     self.ragSearchResult = ragResult
                     self.searchResults = ragResult.results
-                    self.aiAnswer = ragResult.aiAnswer
-                    print("✅ RAG Search: Found \(ragResult.results.count) results with AI answer")
+
+                    // Only show AI answer if we have meaningful results
+                    if ragResult.results.isEmpty {
+                        self.aiAnswer = nil  // Don't show AI answer when no results
+                        print("⚠️ RAG Search: No results found - showing empty state")
+                    } else {
+                        self.aiAnswer = ragResult.aiAnswer
+                        print("✅ RAG Search: Found \(ragResult.results.count) results with AI answer")
+                    }
                 } else {
                     // Use basic search
                     let results = try await n8nService.searchMessages(

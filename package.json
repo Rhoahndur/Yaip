@@ -1,0 +1,13 @@
+{
+  "name": "yaip-backfill",
+  "version": "1.0.0",
+  "description": "Backfill existing Firestore messages into Pinecone vector database",
+  "main": "backfill-messages.js",
+  "scripts": {
+    "backfill": "node backfill-messages.js"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.0.0",
+    "node-fetch": "^2.7.0"
+  }
+}

@@ -51,9 +51,21 @@ class ChatViewModel: ObservableObject {
         NotificationCenter.default.publisher(for: .networkDidReconnect)
             .sink { [weak self] _ in
                 guard let self = self else { return }
-                print("🔄 Network reconnected - immediately retrying pending messages")
+                print("🔄 Network reconnected - retrying pending messages and indexing queue")
                 Task { @MainActor in
+                    // Retry failed message sends
                     await self.retryAllFailedMessages()
+
+                    // Process offline indexing queue
+                    await MessageIndexingService.shared.processOfflineQueue()
+
+                    // Optionally backfill any missed messages in current conversation
+                    if let conversationID = self.conversation.id {
+                        await MessageIndexingService.shared.backfillConversation(
+                            conversationID: conversationID,
+                            limit: 50  // Only backfill last 50 messages on reconnect
+                        )
+                    }
                 }
             }
             .store(in: &cancellables)
@@ -346,7 +358,15 @@ class ChatViewModel: ObservableObject {
                 messages[index].status = .sent
                 try? localStorage.markMessageSynced(id: messageID)
             }
-            
+
+            // STAGE 5: Index message into vector database (fire-and-forget)
+            Task {
+                await MessageIndexingService.shared.indexMessage(
+                    messageID: messageID,
+                    conversationID: conversationID
+                )
+            }
+
             // If message sent successfully but NetworkMonitor thinks we're offline, force a check
             if !networkMonitor.isConnected {
                 print("⚠️ Message sent successfully but NetworkMonitor thinks offline - forcing check")
