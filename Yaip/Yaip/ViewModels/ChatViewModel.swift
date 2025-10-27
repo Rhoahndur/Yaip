@@ -57,16 +57,13 @@ class ChatViewModel: ObservableObject {
                     // Retry failed message sends
                     await self.retryAllFailedMessages()
 
-                    // Process offline indexing queue
+                    // Process offline indexing queue (only messages that failed to index)
                     await MessageIndexingService.shared.processOfflineQueue()
 
-                    // Optionally backfill any missed messages in current conversation
-                    if let conversationID = self.conversation.id {
-                        await MessageIndexingService.shared.backfillConversation(
-                            conversationID: conversationID,
-                            limit: 50  // Only backfill last 50 messages on reconnect
-                        )
-                    }
+                    // Note: Automatic backfill removed to prevent redundant RAG indexing
+                    // New messages are indexed immediately when sent
+                    // Failed messages are retried from offline queue
+                    // Manual backfill available via "Index Messages" button in chat menu
                 }
             }
             .store(in: &cancellables)
