@@ -74,7 +74,7 @@ struct ConversationRow: View {
             // Content
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
-                    Text(displayName)
+                    Text(displayName.truncated(to: 25))
                         .font(.system(size: 17, weight: hasUnreadMessages ? .bold : .semibold))
                         .foregroundStyle(hasUnreadMessages ? .primary : .primary)
                         .lineLimit(1)

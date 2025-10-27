@@ -41,36 +41,14 @@ struct NewChatView: View {
                 // Group name input (only for group chats)
                 if isGroupChatMode {
                     VStack(alignment: .leading, spacing: 4) {
-                        HStack {
-                            TextField("Group Name", text: $groupName)
-                                .textFieldStyle(.roundedBorder)
-                            
-                            // Visual indicator
-                            if selectedUsers.count >= 2 {
-                                if groupName.trimmingCharacters(in: .whitespaces).isEmpty {
-                                    Image(systemName: "exclamationmark.circle.fill")
-                                        .foregroundStyle(.orange)
-                                } else {
-                                    Image(systemName: "checkmark.circle.fill")
-                                        .foregroundStyle(.green)
-                                }
-                            }
-                        }
-                        .padding(.horizontal)
-                        
-                        // Show validation hint - always visible in group mode
-                        if selectedUsers.count >= 2 && groupName.trimmingCharacters(in: .whitespaces).isEmpty {
-                            HStack(spacing: 4) {
-                                Image(systemName: "arrow.up")
-                                    .font(.caption)
-                                    .foregroundStyle(.orange)
-                                Text("Type a group name above to enable Create button")
-                                    .font(.caption)
-                                    .foregroundStyle(.orange)
-                                    .fontWeight(.medium)
-                            }
+                        TextField("Group Name (optional)", text: $groupName)
+                            .textFieldStyle(.roundedBorder)
                             .padding(.horizontal)
-                        }
+
+                        Text("Leave blank to auto-generate from participant names")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal)
                     }
                     .padding(.bottom, 8)
                 }
@@ -247,8 +225,8 @@ struct NewChatView: View {
     
     private var canCreate: Bool {
         if isGroupChatMode {
-            // Group chat requires at least 2 users + group name
-            return selectedUsers.count >= 2 && !groupName.trimmingCharacters(in: .whitespaces).isEmpty
+            // Group chat requires at least 2 users (name is optional)
+            return selectedUsers.count >= 2
         } else {
             // Direct message requires exactly 1 user
             return selectedUsers.count == 1
@@ -264,17 +242,29 @@ struct NewChatView: View {
         // Create pending conversation (NOT saved to Firestore yet)
         if isGroupChatMode {
             print("📝 Creating pending group chat...")
-            print("   Name: \(groupName)")
-            print("   Selected users: \(selectedUsers.count)")
-            
+
             let participantIDs = selectedUsers.compactMap { $0.id } + [currentUserID]
-            
+
+            // Use custom name if provided, otherwise generate from participant names
+            let finalName: String
+            let trimmedName = groupName.trimmingCharacters(in: .whitespaces)
+            if !trimmedName.isEmpty {
+                finalName = trimmedName
+                print("   Name: \(finalName) (custom)")
+            } else {
+                // Generate name from participant names
+                let participantNames = selectedUsers.map { $0.displayName }
+                finalName = generateGroupName(from: participantNames)
+                print("   Name: \(finalName) (auto-generated)")
+            }
+            print("   Selected users: \(selectedUsers.count)")
+
             pendingConversation = PendingConversation(
                 type: .group,
                 participants: participantIDs,
-                name: groupName.trimmingCharacters(in: .whitespaces)
+                name: finalName
             )
-            
+
             print("✅ Pending group chat created (not yet saved to Firestore)")
         } else {
             print("📝 Creating pending 1-on-1 chat...")
@@ -324,6 +314,15 @@ struct NewChatView: View {
         
         // For group chats, navigate immediately
         navigateToPendingChat = true
+    }
+
+    /// Generate a group chat name from participant names
+    private func generateGroupName(from names: [String]) -> String {
+        // Join names with commas
+        let fullName = names.joined(separator: ", ")
+
+        // Truncate if too long (40 chars for storage, will be truncated in UI)
+        return fullName.truncated(to: 40)
     }
 }
 

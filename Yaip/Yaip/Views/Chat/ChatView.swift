@@ -25,6 +25,7 @@ struct ChatView: View {
     @State private var highlightedMessageID: String?
     @State private var shouldAnimateHighlight = false
     @State private var scrollProxy: ScrollViewProxy?
+    @State private var showGroupSettings = false
 
     init(conversation: Conversation, scrollToMessageID: String? = nil) {
         self.conversation = conversation
@@ -217,6 +218,16 @@ struct ChatView: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 HStack(spacing: 12) {
+                    // Group Settings (only for group chats)
+                    if conversation.type == .group {
+                        Button {
+                            showGroupSettings = true
+                        } label: {
+                            Image(systemName: "info.circle")
+                                .foregroundStyle(.blue)
+                        }
+                    }
+
                     // AI Features Menu
                     Menu {
                         Section("AI Assistant") {
@@ -320,6 +331,9 @@ struct ChatView: View {
             SmartSearchView(viewModel: aiViewModel) { messageID in
                 scrollToMessage(messageID)
             }
+        }
+        .sheet(isPresented: $showGroupSettings) {
+            GroupChatSettingsView(conversation: conversation)
         }
         .overlay(alignment: .top) {
             if isAIProcessing {
