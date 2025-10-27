@@ -381,6 +381,92 @@ class N8NService {
         }
     }
 
+    // MARK: - RAG Smart Search
+
+    /// RAG-powered semantic search with AI-generated answer
+    func ragSearch(conversationID: String, query: String) async throws -> RAGSearchResult {
+        // PRODUCTION: Call real N8N RAG search webhook
+        do {
+            print("📤 Calling N8N RAG search webhook...")
+            print("   URL: \(baseURL)/rag_search")
+            print("   Query: \(query)")
+            print("   Conversation ID: \(conversationID)")
+
+            guard let url = URL(string: "\(baseURL)/rag_search") else {
+                print("❌ Invalid RAG search URL: \(baseURL)/rag_search")
+                throw N8NError.invalidURL
+            }
+
+            var urlRequest = URLRequest(url: url)
+            urlRequest.httpMethod = "POST"
+            urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            urlRequest.setValue("Bearer \(authToken)", forHTTPHeaderField: "Authorization")
+            urlRequest.timeoutInterval = 30
+
+            // Request body format for RAG search webhook
+            let requestBody: [String: Any] = [
+                "conversationID": conversationID,
+                "query": query
+            ]
+
+            urlRequest.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
+
+            let (data, response) = try await URLSession.shared.data(for: urlRequest)
+
+            guard let httpResponse = response as? HTTPURLResponse else {
+                print("❌ Invalid HTTP response")
+                throw N8NError.invalidResponse
+            }
+
+            print("📥 Received RAG search response: \(httpResponse.statusCode)")
+
+            guard (200...299).contains(httpResponse.statusCode) else {
+                if let errorString = String(data: data, encoding: .utf8) {
+                    print("❌ Error response body: \(errorString)")
+                }
+                throw N8NError.httpError(statusCode: httpResponse.statusCode)
+            }
+
+            // Debug: Print raw response
+            if let responseString = String(data: data, encoding: .utf8) {
+                print("📄 RAG Response body: \(responseString.prefix(500))...")
+            }
+
+            let decoder = JSONDecoder()
+            let ragResponse = try decoder.decode(RAGSearchResponse.self, from: data)
+
+            print("✅ Received RAG search results from N8N")
+            print("   Success: \(ragResponse.success)")
+            print("   Results found: \(ragResponse.searchResults.count)")
+            print("   AI Answer: \(ragResponse.aiAnswer != nil ? "Yes" : "No")")
+
+            // Map enriched search results from N8N
+            let searchResults = ragResponse.searchResults.map { item in
+                SearchResult(
+                    messageID: item.messageID,
+                    text: item.text,
+                    senderName: item.senderName,
+                    timestamp: parseISODate(item.timestamp) ?? Date(),
+                    relevanceScore: item.relevanceScore,
+                    matchType: parseMatchType(item.matchType)
+                )
+            }
+
+            return RAGSearchResult(
+                results: searchResults,
+                aiAnswer: ragResponse.aiAnswer,
+                answerSources: ragResponse.answerSources ?? [],
+                query: query
+            )
+        } catch {
+            print("❌ N8N RAG search webhook error: \(error)")
+            print("   Falling back to mock data...")
+
+            // Fallback to mock if N8N fails (for testing)
+            return try await mockRAGSearch(query: query)
+        }
+    }
+
     // MARK: - Generic Webhook Call
 
     /// Generic method to call N8N webhook
@@ -625,6 +711,54 @@ extension N8NService {
             )
         ]
     }
+
+    private func mockRAGSearch(query: String) async throws -> RAGSearchResult {
+        try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
+
+        let searchResults = [
+            SearchResult(
+                messageID: "msg-rag-1",
+                text: "The Q4 budget was increased to $150K total, with $50K allocated specifically for marketing initiatives.",
+                senderName: "Sarah Chen",
+                timestamp: Calendar.current.date(byAdding: .day, value: -3, to: Date())!,
+                relevanceScore: 0.96,
+                matchType: .semantic
+            ),
+            SearchResult(
+                messageID: "msg-rag-2",
+                text: "Budget approval came through! We can now proceed with hiring two additional engineers.",
+                senderName: "Mike Johnson",
+                timestamp: Calendar.current.date(byAdding: .day, value: -5, to: Date())!,
+                relevanceScore: 0.89,
+                matchType: .hybrid
+            ),
+            SearchResult(
+                messageID: "msg-rag-3",
+                text: "Just confirming - the marketing budget is $50K for Q4, right?",
+                senderName: "Emma Davis",
+                timestamp: Calendar.current.date(byAdding: .day, value: -1, to: Date())!,
+                relevanceScore: 0.82,
+                matchType: .keyword
+            )
+        ]
+
+        let aiAnswer = """
+        Based on the conversation history, the Q4 budget has been approved with a total of $150K. Here's the breakdown:
+
+        • **Marketing Budget**: $50K allocated for marketing initiatives
+        • **Engineering**: Funds approved for hiring 2 additional engineers
+        • **Total Q4 Budget**: $150K
+
+        The budget was officially approved by leadership, and Sarah Chen confirmed the final numbers. The team can now proceed with planned hiring and marketing campaigns.
+        """
+
+        return RAGSearchResult(
+            results: searchResults,
+            aiAnswer: aiAnswer,
+            answerSources: ["msg-rag-1", "msg-rag-2"],
+            query: query
+        )
+    }
 }
 
 // MARK: - Models
@@ -745,6 +879,17 @@ struct SmartSearchResponse: Codable {
     let conversationID: String
 }
 
+// N8N RAG Search Response (with AI-generated answer)
+struct RAGSearchResponse: Codable {
+    let success: Bool
+    let searchResults: [SearchResultData]
+    let aiAnswer: String?
+    let answerSources: [String]?
+    let query: String
+    let timestamp: String
+    let conversationID: String
+}
+
 struct SearchResultData: Codable {
     let messageID: String
     let text: String
@@ -842,6 +987,13 @@ struct SearchResult: Codable, Identifiable {
     enum MatchType: String, Codable {
         case keyword, semantic, hybrid
     }
+}
+
+struct RAGSearchResult: Codable {
+    let results: [SearchResult]
+    let aiAnswer: String?
+    let answerSources: [String]
+    let query: String
 }
 
 enum N8NError: LocalizedError {

@@ -14,8 +14,10 @@ struct ConversationRow: View {
     @State private var otherUserStatus: UserStatus = .offline
     @State private var displayName: String = "Loading..."
     @State private var statusListener: ListenerRegistration?
+    @State private var userProfileListener: ListenerRegistration?
     @State private var showUserProfile = false
     @State private var otherUser: User?
+    @State private var profileImageURL: String?
     @ObservedObject private var networkMonitor = NetworkMonitor.shared
     
     // Check if this conversation has unread messages
@@ -36,7 +38,9 @@ struct ConversationRow: View {
                     ))
                     .frame(width: 56, height: 56)
 
-                if let imageURL = conversation.imageURL, let url = URL(string: imageURL) {
+                // Use profileImageURL for 1-on-1 (updated in real-time), or conversation.imageURL for groups
+                if let imageURL = (conversation.type == .oneOnOne ? profileImageURL : conversation.imageURL),
+                   let url = URL(string: imageURL) {
                     AsyncImage(url: url) { image in
                         image
                             .resizable()
@@ -142,9 +146,11 @@ struct ConversationRow: View {
             }
         }
         .onDisappear {
-            // Clean up listener when view disappears
+            // Clean up listeners when view disappears
             statusListener?.remove()
             statusListener = nil
+            userProfileListener?.remove()
+            userProfileListener = nil
         }
         .sheet(isPresented: $showUserProfile) {
             if let user = otherUser {
@@ -173,9 +179,11 @@ struct ConversationRow: View {
                 displayName = user.displayName
                 otherUserStatus = user.status
                 otherUser = user // Store full user object for profile modal
+                profileImageURL = user.profileImageURL
 
-                // 🔥 Set up real-time status listener
+                // 🔥 Set up real-time listeners
                 setupStatusListener(for: otherUserID)
+                setupUserProfileListener(for: otherUserID)
             } catch {
                 // User document doesn't exist in Firestore - likely deleted or data inconsistency
                 print("⚠️ User document not found: \(otherUserID)")
@@ -191,11 +199,25 @@ struct ConversationRow: View {
     private func setupStatusListener(for userID: String) {
         // Remove any existing listener
         statusListener?.remove()
-        
+
         // Set up real-time listener for user status
         statusListener = PresenceService.shared.listenToPresence(userID: userID) { status, lastSeen in
             DispatchQueue.main.async {
                 self.otherUserStatus = status
+            }
+        }
+    }
+
+    private func setupUserProfileListener(for userID: String) {
+        // Remove any existing listener
+        userProfileListener?.remove()
+
+        // Set up real-time listener for user profile changes (name, photo, etc.)
+        userProfileListener = UserService.shared.listenToUser(id: userID) { updatedUser in
+            DispatchQueue.main.async {
+                self.displayName = updatedUser.displayName
+                self.profileImageURL = updatedUser.profileImageURL
+                self.otherUser = updatedUser
             }
         }
     }

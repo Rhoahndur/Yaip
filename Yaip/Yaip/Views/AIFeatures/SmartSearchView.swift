@@ -181,6 +181,19 @@ struct SmartSearchView: View {
 
     private var searchResultsList: some View {
         List {
+            // AI Answer Section (if available from RAG search)
+            if let aiAnswer = viewModel.aiAnswer {
+                Section {
+                    AIAnswerCard(answer: aiAnswer, query: searchText)
+                } header: {
+                    Label("AI Assistant Answer", systemImage: "sparkles")
+                        .foregroundStyle(.purple)
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                }
+                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+            }
+
             // Results header
             Section {
                 HStack {
@@ -379,6 +392,82 @@ struct SearchTip: View {
 
             Spacer()
         }
+    }
+}
+
+struct AIAnswerCard: View {
+    let answer: String
+    let query: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // Header
+            HStack(spacing: 8) {
+                Image(systemName: "sparkles.rectangle.stack.fill")
+                    .font(.title3)
+                    .foregroundStyle(.purple)
+
+                Text("AI Summary")
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+
+                Spacer()
+
+                // RAG badge
+                HStack(spacing: 4) {
+                    Image(systemName: "brain")
+                        .font(.caption2)
+                    Text("RAG")
+                        .font(.caption2)
+                        .fontWeight(.semibold)
+                }
+                .foregroundStyle(.white)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(
+                    LinearGradient(
+                        colors: [Color.purple, Color.blue],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .cornerRadius(6)
+            }
+
+            Divider()
+
+            // AI Answer content
+            Text(answer)
+                .font(.body)
+                .foregroundStyle(.primary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            // Footer note
+            HStack(spacing: 4) {
+                Image(systemName: "info.circle")
+                    .font(.caption2)
+                Text("Answer generated from your message history")
+                    .font(.caption2)
+            }
+            .foregroundStyle(.secondary)
+            .padding(.top, 4)
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color.purple.opacity(0.05))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(
+                    LinearGradient(
+                        colors: [Color.purple.opacity(0.3), Color.blue.opacity(0.3)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 1
+                )
+        )
     }
 }
 

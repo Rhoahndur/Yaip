@@ -15,32 +15,60 @@ class UserService {
     
     // Cache for user data to avoid repeated fetches
     private var userCache: [String: User] = [:]
-    
+
+    // Cache expiration: 5 minutes
+    private var cacheTimestamps: [String: Date] = [:]
+    private let cacheExpiration: TimeInterval = 300 // 5 minutes
+
     private init() {}
     
     /// Fetch user by ID
-    func fetchUser(id: String) async throws -> User {
-        // Check cache first
-        if let cachedUser = userCache[id] {
+    func fetchUser(id: String, forceRefresh: Bool = false) async throws -> User {
+        // Check cache first (unless force refresh)
+        if !forceRefresh,
+           let cachedUser = userCache[id],
+           let timestamp = cacheTimestamps[id],
+           Date().timeIntervalSince(timestamp) < cacheExpiration {
+            // Cache is fresh, return it
             return cachedUser
         }
-        
+
         // Fetch from Firestore
         let snapshot = try await db.collection(Constants.Collections.users)
             .document(id)
             .getDocument()
-        
+
         guard snapshot.exists else {
             throw NSError(domain: "UserService", code: 404, userInfo: [NSLocalizedDescriptionKey: "User not found"])
         }
-        
+
         // Use snapshot.data(as:) which properly handles @DocumentID
         let user = try snapshot.data(as: User.self)
-        
-        // Cache the user
+
+        // Cache the user with timestamp
         userCache[id] = user
-        
+        cacheTimestamps[id] = Date()
+
         return user
+    }
+
+    /// Listen to real-time updates for a user
+    func listenToUser(id: String, onChange: @escaping (User) -> Void) -> ListenerRegistration {
+        return db.collection(Constants.Collections.users)
+            .document(id)
+            .addSnapshotListener { [weak self] snapshot, error in
+                guard let snapshot = snapshot,
+                      let user = try? snapshot.data(as: User.self) else {
+                    return
+                }
+
+                // Update cache
+                self?.userCache[id] = user
+                self?.cacheTimestamps[id] = Date()
+
+                // Notify listener
+                onChange(user)
+            }
     }
     
     /// Fetch multiple users by IDs
@@ -120,6 +148,13 @@ class UserService {
     /// Clear user cache (useful after logout)
     func clearCache() {
         userCache.removeAll()
+        cacheTimestamps.removeAll()
+    }
+
+    /// Invalidate cache for a specific user (force refresh on next fetch)
+    func invalidateCache(for userID: String) {
+        userCache.removeValue(forKey: userID)
+        cacheTimestamps.removeValue(forKey: userID)
     }
 }
 

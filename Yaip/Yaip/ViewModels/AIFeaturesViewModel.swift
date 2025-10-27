@@ -44,6 +44,11 @@ class AIFeaturesViewModel: ObservableObject {
     @Published var searchError: String?
     @Published var searchQuery = ""
 
+    // RAG Search
+    @Published var ragSearchResult: RAGSearchResult?
+    @Published var aiAnswer: String?
+    @Published var useRAGSearch = true  // Toggle between basic and RAG search
+
     // General
     @Published var showSummary = false
     @Published var showActionItems = false
@@ -379,6 +384,7 @@ class AIFeaturesViewModel: ObservableObject {
     func searchMessages(query: String) {
         guard !query.isEmpty else {
             searchResults = []
+            aiAnswer = nil
             return
         }
 
@@ -397,13 +403,28 @@ class AIFeaturesViewModel: ObservableObject {
             }
 
             do {
-                let results = try await n8nService.searchMessages(
-                    conversationID: conversationID,
-                    query: query
-                )
+                if useRAGSearch {
+                    // Use RAG search with AI-generated answers
+                    let ragResult = try await n8nService.ragSearch(
+                        conversationID: conversationID,
+                        query: query
+                    )
 
-                self.searchResults = results
-                print("✅ Found \(results.count) search results")
+                    self.ragSearchResult = ragResult
+                    self.searchResults = ragResult.results
+                    self.aiAnswer = ragResult.aiAnswer
+                    print("✅ RAG Search: Found \(ragResult.results.count) results with AI answer")
+                } else {
+                    // Use basic search
+                    let results = try await n8nService.searchMessages(
+                        conversationID: conversationID,
+                        query: query
+                    )
+
+                    self.searchResults = results
+                    self.aiAnswer = nil
+                    print("✅ Basic Search: Found \(results.count) results")
+                }
 
             } catch {
                 self.searchError = error.localizedDescription
@@ -417,6 +438,8 @@ class AIFeaturesViewModel: ObservableObject {
     func clearSearch() {
         searchQuery = ""
         searchResults = []
+        ragSearchResult = nil
+        aiAnswer = nil
         searchError = nil
     }
 
