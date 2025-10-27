@@ -930,7 +930,7 @@ struct TimeSlot: Codable, Identifiable {
     let date: Date
     let startTime: String
     let endTime: String
-    let available: [String]
+    var available: [String]  // Changed from 'let' to 'var' to allow updating with real participant names
     let conflicts: [String]
     var source: CalendarSource = .ai
     var isUserFree: Bool? = nil // From Apple Calendar check

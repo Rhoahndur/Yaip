@@ -20,17 +20,18 @@ class ChatViewModel: ObservableObject {
     @Published var isUploadingImage = false
     @Published var errorMessage: String?
     @Published var participantNames: [String: String] = [:] // userID -> displayName
-    
-    let conversation: Conversation
+    @Published var conversation: Conversation  // Changed from 'let' to '@Published var' to allow updates
+
     private let messageService = MessageService.shared
     private let conversationService = ConversationService.shared
     private let authManager = AuthManager.shared
     private let localStorage = LocalStorageManager.shared
     private let imageUploadManager = ImageUploadManager.shared
     private let networkMonitor = NetworkMonitor.shared
-    
+
     nonisolated(unsafe) private var messageListener: ListenerRegistration?
     nonisolated(unsafe) private var typingListener: ListenerRegistration?
+    nonisolated(unsafe) private var conversationListener: ListenerRegistration?  // Listener for conversation updates
     private var typingTimer: Timer?
     
     init(conversation: Conversation) {
@@ -96,9 +97,9 @@ class ChatViewModel: ObservableObject {
     /// Start listening to messages
     func startListening() {
         guard let conversationID = conversation.id else { return }
-        
+
         isLoading = true
-        
+
         // Load from local storage first
         Task {
             do {
@@ -108,7 +109,10 @@ class ChatViewModel: ObservableObject {
                 print("Error loading local messages: \(error)")
             }
         }
-        
+
+        // Listen to conversation updates (name, participants, etc.)
+        setupConversationListener()
+
         // Listen to messages
         messageListener = messageService.listenToMessages(conversationID: conversationID) { [weak self] firestoreMessages in
             Task { @MainActor in
@@ -235,13 +239,67 @@ class ChatViewModel: ObservableObject {
             }
         }
     }
-    
+
+    /// Setup listener for conversation updates (name, participants, etc.)
+    private func setupConversationListener() {
+        guard let conversationID = conversation.id else { return }
+
+        conversationListener = Firestore.firestore()
+            .collection(Constants.Collections.conversations)
+            .document(conversationID)
+            .addSnapshotListener { [weak self] documentSnapshot, error in
+                Task { @MainActor in
+                    guard let self = self else { return }
+
+                    if let error = error {
+                        print("❌ Error listening to conversation updates: \(error)")
+                        return
+                    }
+
+                    guard let document = documentSnapshot,
+                          document.exists,
+                          let data = document.data() else {
+                        print("⚠️ Conversation document doesn't exist")
+                        return
+                    }
+
+                    // Parse updated conversation fields
+                    let name = data["name"] as? String
+                    let participants = data["participants"] as? [String] ?? self.conversation.participants
+                    let imageURL = data["imageURL"] as? String
+                    let type = (data["type"] as? String).flatMap { ConversationType(rawValue: $0) } ?? self.conversation.type
+
+                    // Update the conversation object
+                    self.conversation = Conversation(
+                        id: conversationID,
+                        type: type,
+                        participants: participants,
+                        name: name,
+                        imageURL: imageURL,
+                        lastMessage: self.conversation.lastMessage, // Keep existing lastMessage
+                        createdAt: self.conversation.createdAt, // Keep existing createdAt
+                        updatedAt: (data["updatedAt"] as? Timestamp)?.dateValue() ?? Date(),
+                        unreadCount: self.conversation.unreadCount // Keep existing unreadCount
+                    )
+
+                    print("✅ Conversation updated: name=\(name ?? "nil"), participants=\(participants.count)")
+
+                    // Reload participant names if this is a group chat
+                    if type == .group {
+                        await self.loadParticipantNames()
+                    }
+                }
+            }
+    }
+
     /// Stop listening to messages
     nonisolated func stopListening() {
         messageListener?.remove()
         typingListener?.remove()
+        conversationListener?.remove()
         messageListener = nil
         typingListener = nil
+        conversationListener = nil
     }
     
     /// Send a message (with proper lifecycle stages)

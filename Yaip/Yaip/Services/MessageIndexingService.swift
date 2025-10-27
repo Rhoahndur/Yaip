@@ -76,8 +76,25 @@ class MessageIndexingService {
             // Extract message fields
             let text = data["text"] as? String ?? ""
             let senderID = data["senderID"] as? String ?? ""
-            let senderName = data["senderName"] as? String ?? "Unknown"
             let timestamp = (data["timestamp"] as? Timestamp)?.dateValue() ?? Date()
+
+            // Fetch sender's display name from users collection
+            var senderName = "Unknown"
+            if !senderID.isEmpty {
+                do {
+                    let userDoc = try await db
+                        .collection(Constants.Collections.users)
+                        .document(senderID)
+                        .getDocument()
+
+                    if let userData = userDoc.data(),
+                       let displayName = userData["displayName"] as? String {
+                        senderName = displayName
+                    }
+                } catch {
+                    print("⚠️  Could not fetch display name for user \(senderID): \(error)")
+                }
+            }
 
             // Skip if no text (e.g., image-only messages)
             guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {

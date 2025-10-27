@@ -121,11 +121,21 @@ struct ConversationListView: View {
                     ToolbarItem(placement: .topBarLeading) {
                         Button {
                             print("👆 User manually triggered connectivity check")
-                            networkMonitor.checkConnectionNow()
+                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                            Task {
+                                await networkMonitor.forceConnectivityCheck()
+                            }
                         } label: {
-                            Image(systemName: "arrow.clockwise")
-                                .foregroundStyle(.orange)
+                            if networkMonitor.isCheckingConnection {
+                                ProgressView()
+                                    .tint(.orange)
+                            } else {
+                                Image(systemName: "arrow.clockwise")
+                                    .foregroundStyle(.orange)
+                                    .font(.headline)
+                            }
                         }
+                        .disabled(networkMonitor.isCheckingConnection)
                     }
                 }
                 

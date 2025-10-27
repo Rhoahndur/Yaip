@@ -10,6 +10,8 @@ import SwiftUI
 struct MeetingSuggestionsView: View {
     @ObservedObject var viewModel: AIFeaturesViewModel
     @Environment(\.dismiss) private var dismiss
+    @State private var selectedTimeSlot: TimeSlot?
+    @State private var showConfirmation = false
 
     var body: some View {
         NavigationStack {
@@ -33,6 +35,15 @@ struct MeetingSuggestionsView: View {
                 }
                 .padding()
             }
+            .safeAreaInset(edge: .bottom) {
+                // Floating confirm button when time slot is selected
+                if selectedTimeSlot != nil {
+                    floatingConfirmButton
+                        .padding()
+                        .background(Color(.systemBackground))
+                        .shadow(radius: 4)
+                }
+            }
             .navigationTitle("Meeting Scheduler")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -40,6 +51,22 @@ struct MeetingSuggestionsView: View {
                     Button("Done") {
                         dismiss()
                     }
+                }
+            }
+            .alert("Confirm Meeting Time", isPresented: $showConfirmation) {
+                Button("Cancel", role: .cancel) {
+                    // Don't clear selection, let user pick again
+                }
+                Button("Confirm & Create Event") {
+                    if let timeSlot = selectedTimeSlot {
+                        viewModel.selectTimeSlot(timeSlot)
+                        selectedTimeSlot = nil
+                    }
+                }
+            } message: {
+                if let timeSlot = selectedTimeSlot,
+                   let suggestion = viewModel.meetingSuggestion {
+                    Text("Create calendar event for \(suggestion.detectedIntent)?\n\n\(timeSlot.date.formatted(date: .abbreviated, time: .omitted))\n\(timeSlot.startTime) - \(timeSlot.endTime) (\(suggestion.duration) min)")
                 }
             }
             .alert("Event Created", isPresented: $viewModel.showEventCreatedAlert) {
@@ -172,7 +199,7 @@ struct MeetingSuggestionsView: View {
             Text("Suggested Times")
                 .font(.headline)
 
-            Text("\(suggestion.duration) minutes")
+            Text("\(suggestion.duration) minutes • Tap to select")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
 
@@ -180,11 +207,36 @@ struct MeetingSuggestionsView: View {
                 TimeSlotCard(
                     timeSlot: timeSlot,
                     number: index + 1,
+                    isSelected: selectedTimeSlot?.id == timeSlot.id,
                     onSelect: {
-                        viewModel.selectTimeSlot(timeSlot)
+                        selectedTimeSlot = timeSlot
                     }
                 )
             }
+        }
+    }
+
+    private var floatingConfirmButton: some View {
+        Button {
+            showConfirmation = true
+        } label: {
+            HStack {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.title3)
+                Text("Confirm & Create Event")
+                    .font(.headline)
+            }
+            .foregroundStyle(.white)
+            .frame(maxWidth: .infinity)
+            .padding()
+            .background(
+                LinearGradient(
+                    colors: [Color.blue, Color.blue.opacity(0.8)],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+            )
+            .cornerRadius(12)
         }
     }
 
@@ -211,6 +263,7 @@ struct MeetingSuggestionsView: View {
 struct TimeSlotCard: View {
     let timeSlot: TimeSlot
     let number: Int
+    let isSelected: Bool
     let onSelect: () -> Void
 
     private var isFullyAvailable: Bool {
@@ -228,6 +281,24 @@ struct TimeSlotCard: View {
         Button(action: onSelect) {
             VStack(spacing: 12) {
                 HStack {
+                    // Selection checkbox
+                    ZStack {
+                        Circle()
+                            .strokeBorder(isSelected ? Color.blue : Color.gray.opacity(0.3), lineWidth: 2)
+                            .frame(width: 24, height: 24)
+
+                        if isSelected {
+                            Circle()
+                                .fill(Color.blue)
+                                .frame(width: 24, height: 24)
+
+                            Image(systemName: "checkmark")
+                                .font(.caption)
+                                .fontWeight(.bold)
+                                .foregroundStyle(.white)
+                        }
+                    }
+
                     // Number badge
                     Text("\(number)")
                         .font(.title3)
@@ -335,12 +406,12 @@ struct TimeSlotCard: View {
                 }
             }
             .padding()
-            .background(Color(.systemBackground))
+            .background(isSelected ? Color.blue.opacity(0.05) : Color(.systemBackground))
             .cornerRadius(12)
-            .shadow(radius: 2)
+            .shadow(radius: isSelected ? 4 : 2)
             .overlay(
                 RoundedRectangle(cornerRadius: 12)
-                    .stroke(cardColor.opacity(0.3), lineWidth: 2)
+                    .stroke(isSelected ? Color.blue : cardColor.opacity(0.3), lineWidth: isSelected ? 3 : 2)
             )
         }
         .buttonStyle(.plain)

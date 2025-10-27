@@ -162,18 +162,32 @@ class AIFeaturesViewModel: ObservableObject {
                         for: suggestion.suggestedTimes
                     )
 
+                    // Update time slots with real participant names in available array
+                    let updatedTimeSlots = enrichedTimeSlots.map { slot in
+                        var updatedSlot = slot
+                        updatedSlot.available = participantNames
+                        return updatedSlot
+                    }
+
                     // Update suggestion with calendar-aware time slots AND real participants
                     suggestion = MeetingSuggestion(
                         detectedIntent: suggestion.detectedIntent,
-                        suggestedTimes: enrichedTimeSlots,
+                        suggestedTimes: updatedTimeSlots,
                         duration: suggestion.duration,
                         participants: participantNames
                     )
                 } else {
+                    // Update time slots with real participant names in available array
+                    let updatedTimeSlots = suggestion.suggestedTimes.map { slot in
+                        var updatedSlot = slot
+                        updatedSlot.available = participantNames
+                        return updatedSlot
+                    }
+
                     // Just update participants
                     suggestion = MeetingSuggestion(
                         detectedIntent: suggestion.detectedIntent,
-                        suggestedTimes: suggestion.suggestedTimes,
+                        suggestedTimes: updatedTimeSlots,
                         duration: suggestion.duration,
                         participants: participantNames
                     )
@@ -200,7 +214,7 @@ class AIFeaturesViewModel: ObservableObject {
                 .getDocument()
 
             guard let data = conversationDoc.data(),
-                  let participantIDs = data["participantIDs"] as? [String] else {
+                  let participantIDs = data["participants"] as? [String] else {
                 print("⚠️ No participants found in conversation")
                 return []
             }
