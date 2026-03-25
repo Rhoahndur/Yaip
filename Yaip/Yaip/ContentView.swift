@@ -15,10 +15,12 @@ struct ContentView: View {
     var body: some View {
         Group {
             if authManager.isAuthenticated {
-                // Show main app (conversation list)
-                ConversationListView()
+                if authManager.needsProfileSetup {
+                    ProfileSetupView()
+                } else {
+                    ConversationListView()
+                }
             } else {
-                // Show authentication flow
                 WelcomeView()
             }
         }
