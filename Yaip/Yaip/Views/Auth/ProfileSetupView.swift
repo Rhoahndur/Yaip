@@ -6,20 +6,21 @@
 //
 
 import SwiftUI
-import Combine
 
 struct ProfileSetupView: View {
-    @Environment(\.dismiss) private var dismiss
     @StateObject private var authManager = AuthManager.shared
-    
+
     @State private var displayName = ""
     @State private var errorMessage = ""
     @State private var isLoading = false
-    
+
+    private var isNameValid: Bool {
+        !displayName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
     var body: some View {
         NavigationStack {
             VStack(spacing: 24) {
-                // Profile Image Placeholder
                 Circle()
                     .fill(Color.blue.opacity(0.1))
                     .frame(width: 120, height: 120)
@@ -28,35 +29,38 @@ struct ProfileSetupView: View {
                             .font(.system(size: 50))
                             .foregroundStyle(.blue)
                     }
-                
+
                 Text("Complete Your Profile")
                     .font(.title2)
                     .fontWeight(.bold)
-                
-                // Display Name Field
+
+                Text("Confirm your display name to get started.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal)
+
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Display Name")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
-                    
+
                     TextField("Enter your name", text: $displayName)
                         .textFieldStyle(.roundedBorder)
                         .textContentType(.name)
                         .autocorrectionDisabled()
                 }
                 .padding(.horizontal)
-                
-                // Error Message
+
                 if !errorMessage.isEmpty {
                     Text(errorMessage)
                         .font(.caption)
                         .foregroundStyle(.red)
                         .padding(.horizontal)
                 }
-                
+
                 Spacer()
-                
-                // Continue Button
+
                 Button {
                     saveProfile()
                 } label: {
@@ -71,31 +75,46 @@ struct ProfileSetupView: View {
                 }
                 .frame(maxWidth: .infinity)
                 .frame(height: 50)
-                .background(displayName.isEmpty ? Color.gray : Color.blue)
+                .background(isNameValid ? Color.blue : Color.gray)
                 .foregroundStyle(.white)
                 .cornerRadius(12)
                 .padding(.horizontal)
-                .disabled(displayName.isEmpty || isLoading)
+                .disabled(!isNameValid || isLoading)
             }
             .padding(.vertical, 40)
             .navigationTitle("Welcome!")
             .navigationBarTitleDisplayMode(.inline)
+            .onAppear {
+                if let name = authManager.user?.displayName, !name.isEmpty {
+                    displayName = name
+                }
+            }
         }
     }
-    
+
     private func saveProfile() {
+        let trimmed = displayName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+
         errorMessage = ""
         isLoading = true
-        
-        // In a real implementation, you'd update the Firestore user document here
-        // For now, we'll just dismiss since the user is already created
-        
-        Task {
-            // Simulate API call
-            try? await Task.sleep(nanoseconds: 500_000_000)
-            
+
+        guard let userID = authManager.currentUserID else {
+            errorMessage = "Not signed in. Please try again."
             isLoading = false
-            dismiss()
+            return
+        }
+
+        Task {
+            do {
+                try await UserService.shared.updateDisplayName(userID: userID, displayName: trimmed)
+                authManager.refreshCurrentUser()
+                authManager.completeProfileSetup()
+            } catch {
+                errorMessage = "Failed to save profile. Please try again."
+                print("❌ Profile setup error: \(error)")
+            }
+            isLoading = false
         }
     }
 }
