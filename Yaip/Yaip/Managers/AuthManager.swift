@@ -11,13 +11,17 @@ import FirebaseFirestore
 import Combine
 
 /// Manages user authentication state and operations
-class AuthManager: ObservableObject {
+class AuthManager: ObservableObject, AuthManagerProtocol {
     static let shared = AuthManager()
     
     @Published var user: User?
     @Published var isAuthenticated = false
     @Published var isLoading = false
-    
+    @Published var needsProfileSetup = false {
+        didSet { UserDefaults.standard.set(needsProfileSetup, forKey: Self.needsProfileSetupKey) }
+    }
+
+    private static let needsProfileSetupKey = "needsProfileSetup"
     private var authStateHandle: AuthStateDidChangeListenerHandle?
     private let db = Firestore.firestore()
     private let presenceService = PresenceService.shared
@@ -31,6 +35,7 @@ class AuthManager: ObservableObject {
     }
 
     private init() {
+        needsProfileSetup = UserDefaults.standard.bool(forKey: Self.needsProfileSetupKey)
         setupAuthStateListener()
     }
 
@@ -157,6 +162,8 @@ class AuthManager: ObservableObject {
         
         // Fetch the user back to get the proper @DocumentID set
         fetchUserProfile(userID: result.user.uid)
+
+        needsProfileSetup = true
     }
     
     /// Sign in with email and password
@@ -204,10 +211,16 @@ class AuthManager: ObservableObject {
         await MainActor.run {
             self.user = nil
             self.isAuthenticated = false
+            self.completeProfileSetup()
         }
         print("✅ Sign out complete")
     }
     
+    /// Mark profile setup as complete
+    func completeProfileSetup() {
+        needsProfileSetup = false
+    }
+
     /// Reset password
     func resetPassword(email: String) async throws {
         try await Auth.auth().sendPasswordReset(withEmail: email)
@@ -266,6 +279,7 @@ class AuthManager: ObservableObject {
         await MainActor.run {
             self.user = nil
             self.isAuthenticated = false
+            self.completeProfileSetup()
         }
 
         print("✅ Account deletion complete")
