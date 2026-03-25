@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode.app
+
+      - name: Cache SPM dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Developer/Xcode/DerivedData/Yaip-*/SourcePackages
+          key: ${{ runner.os }}-spm-${{ hashFiles('Yaip/Yaip.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
+          restore-keys: |
+            ${{ runner.os }}-spm-
+
+      - name: Build
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project Yaip/Yaip.xcodeproj \
+            -scheme Yaip \
+            -destination 'platform=iOS Simulator,name=iPhone 16' \
+            CODE_SIGNING_ALLOWED=NO \
+            | xcpretty --color
+
+      - name: Run Tests
+        run: |
+          set -o pipefail
+          xcodebuild test \
+            -project Yaip/Yaip.xcodeproj \
+            -scheme Yaip \
+            -destination 'platform=iOS Simulator,name=iPhone 16' \
+            CODE_SIGNING_ALLOWED=NO \
+            -enableCodeCoverage YES \
+            | xcpretty --color
+
+  lint:
+    runs-on: macos-15
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install SwiftLint
+        run: brew install swiftlint
+
+      - name: Lint
+        run: swiftlint lint --reporter github-actions-logging
