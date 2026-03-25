@@ -945,7 +945,6 @@ enum CalendarSource: String, Codable {
     case ai = "ai"
     case appleCalendar = "apple"
     case googleCalendar = "google"
-    case outlook = "outlook"
 }
 
 struct Decision: Codable, Identifiable {
