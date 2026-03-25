@@ -134,6 +134,9 @@ struct ConversationRow: View {
         .padding(.vertical, 8)
         .padding(.horizontal, 16)
         .background(Color(.systemBackground))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(conversationAccessibilityLabel)
+        .accessibilityIdentifier("conversationRow_\(conversation.id ?? "")")
         .task {
             await loadConversationDetails()
         }
@@ -206,6 +209,20 @@ struct ConversationRow: View {
                 self.otherUserStatus = status
             }
         }
+    }
+
+    private var conversationAccessibilityLabel: String {
+        var parts = [displayName]
+        if let lastMessage = conversation.lastMessage {
+            parts.append(lastMessage.text)
+        }
+        if hasUnreadMessages, let uid = currentUserID, let count = conversation.unreadCount[uid] {
+            parts.append("\(count) unread")
+        }
+        if conversation.type == .oneOnOne {
+            parts.append(otherUserStatus == .online ? "Online" : "Offline")
+        }
+        return parts.joined(separator: ", ")
     }
 
     private func setupUserProfileListener(for userID: String) {
