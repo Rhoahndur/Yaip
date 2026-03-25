@@ -2,7 +2,9 @@
 //  AIFeaturesViewModel.swift
 //  Yaip
 //
-//  ViewModel for managing AI agent features
+//  ViewModel for managing AI-powered features: thread summarization,
+//  action item extraction, meeting scheduling, decision tracking,
+//  priority detection, and smart search (basic + RAG).
 //
 
 import Foundation
@@ -75,6 +77,8 @@ class AIFeaturesViewModel: ObservableObject {
 
     // MARK: - Thread Summarization
 
+    /// Generate an AI summary of recent messages in the conversation.
+    /// - Parameter messageCount: Number of recent messages to include (default 200).
     func summarizeThread(messageCount: Int = 200) {
         isLoadingSummary = true
         summaryError = nil
@@ -88,6 +92,7 @@ class AIFeaturesViewModel: ObservableObject {
 
                 self.currentSummary = summary
                 self.showSummary = true
+                AnalyticsService.logAIFeatureUsed(feature: "summarize")
                 print("✅ Summary generated: \(summary.messageCount) messages")
 
             } catch {
@@ -101,6 +106,8 @@ class AIFeaturesViewModel: ObservableObject {
 
     // MARK: - Action Items
 
+    /// Extract actionable tasks from recent messages using AI.
+    /// - Parameter dateRange: How far back to look for action items (default "7d").
     func extractActionItems(dateRange: String = "7d") {
         isLoadingActionItems = true
         actionItemsError = nil
@@ -114,6 +121,7 @@ class AIFeaturesViewModel: ObservableObject {
 
                 self.actionItems = items
                 self.showActionItems = true
+                AnalyticsService.logAIFeatureUsed(feature: "action_items")
                 print("✅ Extracted \(items.count) action items")
 
             } catch {
@@ -141,6 +149,10 @@ class AIFeaturesViewModel: ObservableObject {
 
     // MARK: - Meeting Scheduler
 
+    /// Suggest meeting times based on conversation context.
+    ///
+    /// If Apple Calendar is authorized, enriches suggestions with real availability data.
+    /// Replaces placeholder participant names with real display names from Firestore.
     func suggestMeetingTimes(context: String = "from recent messages") {
         isLoadingMeeting = true
         meetingError = nil
@@ -195,6 +207,7 @@ class AIFeaturesViewModel: ObservableObject {
 
                 self.meetingSuggestion = suggestion
                 self.showMeetingSuggestion = true
+                AnalyticsService.logAIFeatureUsed(feature: "meeting_times")
 
             } catch {
                 self.meetingError = error.localizedDescription
@@ -345,6 +358,7 @@ class AIFeaturesViewModel: ObservableObject {
 
     // MARK: - Decision Tracking
 
+    /// Extract decisions and agreements from the conversation using AI.
     func extractDecisions() {
         isLoadingDecisions = true
         decisionsError = nil
@@ -357,6 +371,7 @@ class AIFeaturesViewModel: ObservableObject {
 
                 self.decisions = extractedDecisions
                 self.showDecisions = true
+                AnalyticsService.logAIFeatureUsed(feature: "decisions")
                 print("✅ Extracted \(extractedDecisions.count) decisions")
 
             } catch {
@@ -370,6 +385,7 @@ class AIFeaturesViewModel: ObservableObject {
 
     // MARK: - Priority Detection
 
+    /// Detect high-priority messages that may need urgent attention.
     func detectPriority() {
         isLoadingPriority = true
         priorityError = nil
@@ -382,6 +398,7 @@ class AIFeaturesViewModel: ObservableObject {
 
                 self.priorityMessages = priority
                 self.showPriority = true
+                AnalyticsService.logAIFeatureUsed(feature: "priority")
                 print("✅ Detected \(priority.count) priority messages")
 
             } catch {
@@ -395,6 +412,11 @@ class AIFeaturesViewModel: ObservableObject {
 
     // MARK: - Smart Search
 
+    /// Search messages using either basic search or RAG (Retrieval-Augmented Generation).
+    ///
+    /// RAG search uses vector embeddings to find semantically similar messages
+    /// and generates an AI-synthesized answer. Basic search uses keyword matching.
+    /// Includes a 0.5s debounce to avoid excessive API calls while typing.
     func searchMessages(query: String) {
         guard !query.isEmpty else {
             searchResults = []
@@ -417,6 +439,8 @@ class AIFeaturesViewModel: ObservableObject {
             }
 
             do {
+                AnalyticsService.logSearchPerformed(queryLength: query.count)
+
                 if useRAGSearch {
                     // Use RAG search with AI-generated answers
                     let ragResult = try await n8nService.ragSearch(
