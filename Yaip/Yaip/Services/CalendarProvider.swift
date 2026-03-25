@@ -32,7 +32,6 @@ protocol CalendarProvider {
 enum CalendarProviderType: String, CaseIterable, Identifiable, Codable {
     case apple = "Apple Calendar"
     case google = "Google Calendar"
-    case outlook = "Outlook Calendar"
 
     var id: String { rawValue }
 
@@ -41,7 +40,6 @@ enum CalendarProviderType: String, CaseIterable, Identifiable, Codable {
         switch self {
         case .apple: return "calendar"
         case .google: return "globe"
-        case .outlook: return "envelope"
         }
     }
 
@@ -50,7 +48,6 @@ enum CalendarProviderType: String, CaseIterable, Identifiable, Codable {
         switch self {
         case .apple: return "blue"
         case .google: return "red"
-        case .outlook: return "blue"
         }
     }
 
@@ -59,7 +56,6 @@ enum CalendarProviderType: String, CaseIterable, Identifiable, Codable {
         switch self {
         case .apple: return "Built-in iOS calendar"
         case .google: return "Google Workspace calendar"
-        case .outlook: return "Microsoft 365 calendar"
         }
     }
 }
