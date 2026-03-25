@@ -16,7 +16,6 @@ class CalendarManager: ObservableObject {
     // Calendar providers
     @Published var appleCalendar: AppleCalendarService
     @Published var googleCalendar: GoogleCalendarService?
-    @Published var outlookCalendar: OutlookCalendarService?
 
     // Enabled providers (persisted)
     @Published var enabledProviders: Set<CalendarProviderType> = []
@@ -27,26 +26,26 @@ class CalendarManager: ObservableObject {
         // Initialize Apple Calendar (always available)
         self.appleCalendar = AppleCalendarService.shared
 
-        // Load enabled providers from UserDefaults
+        // Load enabled providers from UserDefaults (decode gracefully if stored values include removed cases)
         if let data = UserDefaults.standard.data(forKey: enabledProvidersKey),
-           let providers = try? JSONDecoder().decode(Set<CalendarProviderType>.self, from: data) {
-            self.enabledProviders = providers
+           let rawStrings = try? JSONDecoder().decode(Set<String>.self, from: data) {
+            let valid = Set(rawStrings.compactMap { CalendarProviderType(rawValue: $0) })
+            self.enabledProviders = valid
+            if valid.count != rawStrings.count {
+                saveEnabledProviders()
+            }
         }
 
         // Initialize other providers if they were previously enabled
         if enabledProviders.contains(.google) {
             self.googleCalendar = GoogleCalendarService.shared
         }
-        if enabledProviders.contains(.outlook) {
-            self.outlookCalendar = OutlookCalendarService.shared
-        }
     }
 
     /// Check if any calendar provider is connected
     var hasAnyProviderConnected: Bool {
         return appleCalendar.isAuthorized ||
-               (googleCalendar?.isAuthorized ?? false) ||
-               (outlookCalendar?.isAuthorized ?? false)
+               (googleCalendar?.isAuthorized ?? false)
     }
 
     /// Get all connected providers
@@ -58,9 +57,6 @@ class CalendarManager: ObservableObject {
         }
         if googleCalendar?.isAuthorized == true {
             providers.append(.google)
-        }
-        if outlookCalendar?.isAuthorized == true {
-            providers.append(.outlook)
         }
 
         return providers
@@ -86,14 +82,6 @@ class CalendarManager: ObservableObject {
             print("📅 Checked Google Calendar availability")
         }
 
-        // Check Outlook Calendar (async)
-        if enabledProviders.contains(.outlook),
-           let outlook = outlookCalendar,
-           outlook.isAuthorized {
-            enrichedSlots = await outlook.checkAvailability(for: enrichedSlots)
-            print("📅 Checked Outlook Calendar availability")
-        }
-
         return enrichedSlots
     }
 
@@ -109,10 +97,6 @@ class CalendarManager: ObservableObject {
         case .google:
             if googleCalendar == nil {
                 googleCalendar = GoogleCalendarService.shared
-            }
-        case .outlook:
-            if outlookCalendar == nil {
-                outlookCalendar = OutlookCalendarService.shared
             }
         }
     }
@@ -137,8 +121,6 @@ class CalendarManager: ObservableObject {
             return appleCalendar
         case .google:
             return googleCalendar
-        case .outlook:
-            return outlookCalendar
         }
     }
 }
