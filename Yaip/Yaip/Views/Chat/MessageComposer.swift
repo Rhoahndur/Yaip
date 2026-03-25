@@ -29,10 +29,14 @@ struct MessageComposer: View {
             HStack(spacing: 12) {
                 // Image picker button
                 ImagePicker(selectedImage: $selectedImage)
-                
+                    .accessibilityLabel("Attach photo")
+                    .accessibilityHint("Double tap to choose a photo to send")
+
                 // Text field
                 TextField("Message", text: $text, axis: .vertical)
                     .textFieldStyle(.plain)
+                    .accessibilityLabel("Message input")
+                    .accessibilityIdentifier("messageTextField")
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)
                     .background(Color.gray.opacity(0.1))
@@ -63,6 +67,8 @@ struct MessageComposer: View {
                         .foregroundStyle(canSend ? .blue : .gray)
                 }
                 .disabled(!canSend)
+                .accessibilityLabel("Send message")
+                .accessibilityIdentifier("sendButton")
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
