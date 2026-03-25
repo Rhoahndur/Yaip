@@ -40,6 +40,8 @@ struct TypingIndicator: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 4)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(userName) is typing")
         .onAppear {
             animating = true
         }
