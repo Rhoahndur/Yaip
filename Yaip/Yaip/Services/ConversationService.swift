@@ -9,7 +9,7 @@ import Foundation
 import FirebaseFirestore
 
 /// Service for managing conversations in Firestore
-class ConversationService {
+class ConversationService: ConversationServiceProtocol {
     static let shared = ConversationService()
     private let db = Firestore.firestore()
     
@@ -31,7 +31,7 @@ class ConversationService {
             .getDocuments()
         
         return snapshot.documents.compactMap { doc in
-            try? doc.data(as: Conversation.self)
+            doc.decoded(as: Conversation.self)
         }
     }
     
@@ -48,7 +48,7 @@ class ConversationService {
                 }
                 
                 let conversations = documents.compactMap { doc in
-                    try? doc.data(as: Conversation.self)
+                    doc.decoded(as: Conversation.self)
                 }
                 completion(conversations)
             }
@@ -78,7 +78,7 @@ class ConversationService {
         
         // Find conversation that has exactly these participants
         return snapshot.documents.compactMap { doc in
-            try? doc.data(as: Conversation.self)
+            doc.decoded(as: Conversation.self)
         }.first { conv in
             Set(conv.participants) == Set(participants)
         }

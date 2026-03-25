@@ -10,7 +10,7 @@ import FirebaseStorage
 import UIKit
 
 /// Service for uploading and managing media files in Firebase Storage
-class StorageService {
+class StorageService: StorageServiceProtocol {
     static let shared = StorageService()
     private let storage = Storage.storage()
     

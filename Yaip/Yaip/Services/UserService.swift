@@ -9,7 +9,7 @@ import Foundation
 import FirebaseFirestore
 
 /// Service for user-related operations
-class UserService {
+class UserService: UserServiceProtocol {
     static let shared = UserService()
     private let db = Firestore.firestore()
     
@@ -129,7 +129,7 @@ class UserService {
                 .getDocuments()
 
             return snapshot.documents.compactMap { doc in
-                try? doc.data(as: User.self)
+                doc.decoded(as: User.self)
             }
         }
 
@@ -141,7 +141,7 @@ class UserService {
             .getDocuments()
         
         return snapshot.documents.compactMap { doc in
-            try? doc.data(as: User.self)
+            doc.decoded(as: User.self)
         }
     }
     

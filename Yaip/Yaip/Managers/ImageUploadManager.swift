@@ -12,7 +12,7 @@ import Combine
 /// Manages image upload lifecycle with a proper state machine
 /// Prevents race conditions and provides a single source of truth for image states
 @MainActor
-class ImageUploadManager: ObservableObject {
+class ImageUploadManager: ObservableObject, ImageUploadManagerProtocol {
     static let shared = ImageUploadManager()
     
     /// Image upload state for each message

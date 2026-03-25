@@ -10,7 +10,7 @@ import FirebaseFirestore
 import Combine
 
 /// Service for managing messages in Firestore
-class MessageService {
+class MessageService: MessageServiceProtocol {
     static let shared = MessageService()
     private let db = Firestore.firestore()
     
@@ -46,7 +46,7 @@ class MessageService {
             .getDocuments()
         
         return snapshot.documents.compactMap { doc in
-            try? doc.data(as: Message.self)
+            doc.decoded(as: Message.self)
         }
     }
     
@@ -64,7 +64,7 @@ class MessageService {
                 }
                 
                 let messages = documents.compactMap { doc in
-                    try? doc.data(as: Message.self)
+                    doc.decoded(as: Message.self)
                 }
                 completion(messages)
             }
@@ -203,7 +203,7 @@ class MessageService {
 
         // Get current message
         let doc = try await messageRef.getDocument()
-        guard var message = try? doc.data(as: Message.self) else {
+        guard var message = doc.decoded(as: Message.self) else {
             throw MessageError.invalidData
         }
 

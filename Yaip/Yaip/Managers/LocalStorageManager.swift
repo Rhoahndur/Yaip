@@ -11,7 +11,7 @@ import UIKit
 
 /// Manager for local persistence using SwiftData
 @MainActor
-class LocalStorageManager {
+class LocalStorageManager: LocalStorageManagerProtocol {
     static let shared = LocalStorageManager()
     
     private var modelContainer: ModelContainer

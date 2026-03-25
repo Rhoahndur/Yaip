@@ -11,7 +11,7 @@ import Combine
 import UIKit
 
 /// Monitors network connectivity status
-class NetworkMonitor: ObservableObject {
+class NetworkMonitor: ObservableObject, NetworkMonitorProtocol {
     static let shared = NetworkMonitor()
 
     @Published var isConnected: Bool = true

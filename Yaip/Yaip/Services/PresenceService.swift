@@ -10,7 +10,7 @@ import FirebaseFirestore
 import FirebaseDatabase
 
 /// Service for managing user presence and online status
-class PresenceService {
+class PresenceService: PresenceServiceProtocol {
     static let shared = PresenceService()
     private let db = Firestore.firestore()
     private let realtimeDB = Database.database().reference()
