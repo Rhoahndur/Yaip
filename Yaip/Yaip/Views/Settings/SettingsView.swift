@@ -82,11 +82,11 @@ struct SettingsView: View {
                 Section("About") {
                     LabeledContent("Version", value: appVersion)
 
-                    Link(destination: URL(string: "https://github.com/yourusername/yaip")!) {
+                    Link(destination: URL(string: "https://github.com/rhoahndur/yaip")!) {
                         Label("GitHub", systemImage: "link")
                     }
 
-                    Link(destination: URL(string: "https://docs.yaip.com")!) {
+                    NavigationLink(destination: HelpSupportView()) {
                         Label("Help & Support", systemImage: "questionmark.circle")
                     }
                 }
