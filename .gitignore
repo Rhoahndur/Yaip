@@ -107,3 +107,6 @@ Config.xcconfig
 # IDEs
 .vscode/
 .idea/
+
+# Planning
+*PLAN.md
