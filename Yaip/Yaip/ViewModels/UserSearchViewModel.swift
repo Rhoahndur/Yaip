@@ -18,10 +18,11 @@ class UserSearchViewModel: ObservableObject {
     @Published var errorMessage: String?
     
     private let db = Firestore.firestore()
-    private let authManager = AuthManager.shared
+    private let authManager: AuthManagerProtocol
     private var searchTask: Task<Void, Never>?
-    
-    init() {
+
+    init(authManager: AuthManagerProtocol = AuthManager.shared) {
+        self.authManager = authManager
         // Setup search debouncing
         setupSearchDebounce()
     }

@@ -22,11 +22,11 @@ class PendingChatViewModel: ObservableObject {
     @Published var errorMessage: String?
     
     let pendingConversation: PendingConversation
-    private let conversationService = ConversationService.shared
-    private let messageService = MessageService.shared
-    private let storageService = StorageService.shared
-    private let authManager = AuthManager.shared
-    
+    private let conversationService: ConversationServiceProtocol
+    private let messageService: MessageServiceProtocol
+    private let storageService: StorageServiceProtocol
+    private let authManager: AuthManagerProtocol
+
     var displayName: String {
         if let name = pendingConversation.name {
             return name
@@ -46,8 +46,18 @@ class PendingChatViewModel: ObservableObject {
         return "New Chat"
     }
     
-    init(pendingConversation: PendingConversation) {
+    init(
+        pendingConversation: PendingConversation,
+        conversationService: ConversationServiceProtocol = ConversationService.shared,
+        messageService: MessageServiceProtocol = MessageService.shared,
+        storageService: StorageServiceProtocol = StorageService.shared,
+        authManager: AuthManagerProtocol = AuthManager.shared
+    ) {
         self.pendingConversation = pendingConversation
+        self.conversationService = conversationService
+        self.messageService = messageService
+        self.storageService = storageService
+        self.authManager = authManager
     }
     
     /// Send the first message and create the conversation

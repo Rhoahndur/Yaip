@@ -9,7 +9,11 @@ import Foundation
 import FirebaseFirestore
 import Combine
 
-/// ViewModel for managing the conversation list
+/// ViewModel for managing the conversation list.
+///
+/// Provides real-time conversation listening, 1-on-1 and group conversation creation,
+/// unread filtering, and mark-all-as-read. Uses `ListenerBag` for lifecycle-safe
+/// Firestore listener management.
 @MainActor
 class ConversationListViewModel: ObservableObject {
     @Published var conversations: [Conversation] = []
@@ -17,10 +21,20 @@ class ConversationListViewModel: ObservableObject {
     @Published var errorMessage: String?
     @Published var showUnreadOnly: Bool = false
 
-    nonisolated(unsafe) private var listener: ListenerRegistration?
-    let conversationService = ConversationService.shared // Made public for NewChatView access
-    let authManager = AuthManager.shared
-    private let localStorage = LocalStorageManager.shared
+    private let listenerBag = ListenerBag()
+    let conversationService: ConversationServiceProtocol
+    let authManager: AuthManagerProtocol
+    private let localStorage: LocalStorageManagerProtocol
+
+    init(
+        conversationService: ConversationServiceProtocol = ConversationService.shared,
+        authManager: AuthManagerProtocol = AuthManager.shared,
+        localStorage: LocalStorageManagerProtocol = LocalStorageManager.shared
+    ) {
+        self.conversationService = conversationService
+        self.authManager = authManager
+        self.localStorage = localStorage
+    }
 
     /// Filtered conversations based on unread status
     var filteredConversations: [Conversation] {
@@ -52,35 +66,30 @@ class ConversationListViewModel: ObservableObject {
             }
         }
         
-        listener = conversationService.listenToConversations(for: userID) { [weak self] conversations in
+        let convListener = conversationService.listenToConversations(for: userID) { [weak self] conversations in
             Task { @MainActor in
                 guard let self = self else { return }
                 
-                // Filter out conversations where user is talking to themselves
-                let filteredConversations = conversations.filter { conversation in
-                    if conversation.type == .group {
-                        return true // Keep all group chats
-                    }
-                    // For 1-on-1, make sure it's not with yourself
-                    let uniqueParticipants = Set(conversation.participants)
-                    return uniqueParticipants.count > 1
-                }
-                
+                let filteredConversations = conversations.excludingSelfChats()
                 self.conversations = filteredConversations
                 self.isLoading = false
                 
                 // Save to local storage
                 for conversation in filteredConversations {
-                    try? self.localStorage.saveConversation(conversation)
+                    do {
+                        try self.localStorage.saveConversation(conversation)
+                    } catch {
+                        AppLogger.logSilentFailure(error, context: "saveConversation(listener)", category: .storage)
+                    }
                 }
             }
         }
+        listenerBag.store(convListener, key: "conversations")
     }
     
     /// Stop listening to conversations
-    nonisolated func stopListening() {
-        listener?.remove()
-        listener = nil
+    func stopListening() {
+        listenerBag.removeAll()
     }
     
     /// Fetch conversations once (without listener)
@@ -113,7 +122,11 @@ class ConversationListViewModel: ObservableObject {
         }
     }
     
-    /// Create a new 1-on-1 conversation
+    /// Create a new 1-on-1 conversation with another user.
+    ///
+    /// Checks for an existing conversation first to avoid duplicates.
+    /// - Throws: `ConversationError.cannotChatWithSelf` if trying to chat with yourself.
+    /// - Returns: The existing or newly created conversation.
     func createOneOnOneConversation(with otherUser: User) async throws -> Conversation {
         guard let currentUserID = authManager.currentUserID,
               let otherUserID = otherUser.id else {
@@ -150,10 +163,14 @@ class ConversationListViewModel: ObservableObject {
         var conversationToCreate = conversation
         conversationToCreate.id = conversationID
         try await conversationService.createConversation(conversationToCreate)
+        AnalyticsService.logConversationCreated(type: "oneOnOne", participantCount: 2)
         return conversation
     }
-    
-    /// Create a new group conversation
+
+    /// Create a new group conversation with the specified name and participants.
+    ///
+    /// Automatically adds the current user to the participant list if not already included.
+    /// - Returns: The newly created group conversation.
     func createGroupConversation(name: String, participants: [String]) async throws -> Conversation {
         guard let currentUserID = authManager.currentUserID else {
             throw ConversationError.invalidID
@@ -180,9 +197,10 @@ class ConversationListViewModel: ObservableObject {
         var conversationToCreate = conversation
         conversationToCreate.id = conversationID
         try await conversationService.createConversation(conversationToCreate)
+        AnalyticsService.logConversationCreated(type: "group", participantCount: allParticipants.count)
         return conversation
     }
-    
+
     /// Delete a conversation
     func deleteConversation(_ conversation: Conversation) async {
         guard let conversationID = conversation.id else { return }
@@ -208,10 +226,14 @@ class ConversationListViewModel: ObservableObject {
             let unreadCount = conversation.unreadCount[currentUserID] ?? 0
 
             if unreadCount > 0 {
-                try? await conversationService.markAsRead(
-                    conversationID: conversationID,
-                    userID: currentUserID
-                )
+                do {
+                    try await conversationService.markAsRead(
+                        conversationID: conversationID,
+                        userID: currentUserID
+                    )
+                } catch {
+                    AppLogger.logSilentFailure(error, context: "markAllAsRead", category: .messages)
+                }
             }
         }
     }
