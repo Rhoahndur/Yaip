@@ -65,11 +65,11 @@ struct ChatView: View {
                                     .font(.system(size: 48))
                                     .foregroundStyle(.secondary.opacity(0.5))
                                 
-                                Text("No messages yet")
+                                Text(L10n.Chat.noMessages)
                                     .font(.subheadline)
                                     .foregroundStyle(.secondary)
-                                
-                                Text("Send a message to start the conversation")
+
+                                Text(L10n.Chat.startConversation)
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
@@ -78,51 +78,37 @@ struct ChatView: View {
                         } else {
                             ForEach(viewModel.messages) { message in
                                 let isTargetMessage = message.id == scrollToMessageID || message.id == highlightedMessageID
+                                let bubbleContext: UnifiedMessageBubble.ChatContext = {
+                                    if conversation.type == .group {
+                                        return .group(
+                                            senderName: viewModel.getSenderName(for: message.senderID),
+                                            conversation: conversation,
+                                            currentUserID: authManager.currentUserID ?? ""
+                                        )
+                                    }
+                                    return .oneOnOne
+                                }()
 
-                                if conversation.type == .group {
-                                    GroupMessageBubble(
-                                        message: message,
-                                        senderName: viewModel.getSenderName(for: message.senderID),
-                                        isFromCurrentUser: message.senderID == authManager.currentUserID,
-                                        conversation: conversation,
-                                        currentUserID: authManager.currentUserID ?? "",
-                                        onRetry: {
-                                            Task {
-                                                await viewModel.retryMessage(message)
-                                            }
+                                UnifiedMessageBubble(
+                                    message: message,
+                                    isFromCurrentUser: message.senderID == authManager.currentUserID,
+                                    context: bubbleContext,
+                                    onRetry: {
+                                        Task {
+                                            await viewModel.retryMessage(message)
                                         }
-                                    )
-                                    .id(message.id)
-                                    .background(
-                                        isTargetMessage ? Color.yellow.opacity(0.3) : Color.clear
-                                    )
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 12)
-                                            .stroke(isTargetMessage ? Color.orange : Color.clear, lineWidth: 3)
-                                            .shadow(color: isTargetMessage ? Color.orange.opacity(0.5) : Color.clear, radius: 8)
-                                    )
-                                    .animation(.easeInOut(duration: 1.5).repeatCount(2, autoreverses: true), value: shouldAnimateHighlight)
-                                } else {
-                                    MessageBubble(
-                                        message: message,
-                                        isFromCurrentUser: message.senderID == authManager.currentUserID,
-                                        onRetry: {
-                                            Task {
-                                                await viewModel.retryMessage(message)
-                                            }
-                                        }
-                                    )
-                                    .id(message.id)
-                                    .background(
-                                        isTargetMessage ? Color.yellow.opacity(0.3) : Color.clear
-                                    )
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 12)
-                                            .stroke(isTargetMessage ? Color.orange : Color.clear, lineWidth: 3)
-                                            .shadow(color: isTargetMessage ? Color.orange.opacity(0.5) : Color.clear, radius: 8)
-                                    )
-                                    .animation(.easeInOut(duration: 1.5).repeatCount(2, autoreverses: true), value: shouldAnimateHighlight)
-                                }
+                                    }
+                                )
+                                .id(message.id)
+                                .background(
+                                    isTargetMessage ? Color.yellow.opacity(0.3) : Color.clear
+                                )
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .stroke(isTargetMessage ? Color.orange : Color.clear, lineWidth: 3)
+                                        .shadow(color: isTargetMessage ? Color.orange.opacity(0.5) : Color.clear, radius: 8)
+                                )
+                                .animation(.easeInOut(duration: 1.5).repeatCount(2, autoreverses: true), value: shouldAnimateHighlight)
                             }
                         }
                     }
@@ -203,7 +189,7 @@ struct ChatView: View {
                         if networkMonitor.isConnected {
                             OnlineStatusText(status: otherUserStatus, lastSeen: otherUserLastSeen)
                         } else {
-                            Text("Status unavailable")
+                            Text(L10n.Chat.statusUnavailable)
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
@@ -230,26 +216,26 @@ struct ChatView: View {
 
                     // AI Features Menu
                     Menu {
-                        Section("AI Assistant") {
+                        Section(L10n.AI.assistant) {
                             Button {
                                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                                 aiViewModel.summarizeThread()
                             } label: {
-                                Label("Summarize Thread", systemImage: "doc.text.magnifyingglass")
+                                Label(L10n.AI.summarize, systemImage: "doc.text.magnifyingglass")
                             }
 
                             Button {
                                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                                 aiViewModel.extractActionItems()
                             } label: {
-                                Label("Extract Action Items", systemImage: "checkmark.circle")
+                                Label(L10n.AI.actionItems, systemImage: "checkmark.circle")
                             }
 
                             Button {
                                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                                 aiViewModel.suggestMeetingTimes()
                             } label: {
-                                Label("Suggest Meeting Times", systemImage: "calendar.badge.clock")
+                                Label(L10n.AI.meetingTimes, systemImage: "calendar.badge.clock")
                             }
                         }
 
@@ -258,21 +244,21 @@ struct ChatView: View {
                                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                                 aiViewModel.extractDecisions()
                             } label: {
-                                Label("View Decisions", systemImage: "lightbulb")
+                                Label(L10n.AI.decisions, systemImage: "lightbulb")
                             }
 
                             Button {
                                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                                 aiViewModel.detectPriority()
                             } label: {
-                                Label("Detect Priority Messages", systemImage: "exclamationmark.triangle")
+                                Label(L10n.AI.priority, systemImage: "exclamationmark.triangle")
                             }
 
                             Button {
                                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                                 aiViewModel.showSearch = true
                             } label: {
-                                Label("Smart Search", systemImage: "magnifyingglass")
+                                Label(L10n.AI.search, systemImage: "magnifyingglass")
                             }
 
                             Button {
@@ -285,7 +271,7 @@ struct ChatView: View {
                                     )
                                 }
                             } label: {
-                                Label("Index Messages", systemImage: "arrow.triangle.2.circlepath")
+                                Label(L10n.AI.indexMessages, systemImage: "arrow.triangle.2.circlepath")
                             }
                         }
                     } label: {
@@ -355,7 +341,7 @@ struct ChatView: View {
                         .scaleEffect(0.8)
                         .tint(.white)
 
-                    Text("AI is processing...")
+                    Text(L10n.AI.processing)
                         .font(.subheadline)
                         .foregroundStyle(.white)
                 }
