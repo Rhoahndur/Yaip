@@ -18,9 +18,20 @@
 		05EDF0132EAEE7B8004D7775 /* FirebaseDatabase in Frameworks */ = {isa = PBXBuildFile; productRef = 05EDF0122EAEE7B8004D7775 /* FirebaseDatabase */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		05EDF0262EB5A001004D7775 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 05EDEF422EA6EA8E004D7775 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 05EDEF492EA6EA8E004D7775;
+			remoteInfo = Yaip;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
 		05EDEF4A2EA6EA8E004D7775 /* Yaip.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Yaip.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		05EDEFE92EAC30BF004D7775 /* Config.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config.xcconfig; sourceTree = "<group>"; };
+		05EDF0202EB5A001004D7775 /* YaipTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = YaipTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -44,6 +55,11 @@
 			path = Yaip;
 			sourceTree = "<group>";
 		};
+		05EDF0212EB5A001004D7775 /* YaipTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = YaipTests;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -62,6 +78,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		05EDF0232EB5A001004D7775 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -70,6 +93,7 @@
 			children = (
 				05EDEFE92EAC30BF004D7775 /* Config.xcconfig */,
 				05EDEF4C2EA6EA8E004D7775 /* Yaip */,
+				05EDF0212EB5A001004D7775 /* YaipTests */,
 				05EDF0112EAEE7B8004D7775 /* Frameworks */,
 				05EDEF4B2EA6EA8E004D7775 /* Products */,
 			);
@@ -79,6 +103,7 @@
 			isa = PBXGroup;
 			children = (
 				05EDEF4A2EA6EA8E004D7775 /* Yaip.app */,
+				05EDF0202EB5A001004D7775 /* YaipTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -123,6 +148,27 @@
 			productReference = 05EDEF4A2EA6EA8E004D7775 /* Yaip.app */;
 			productType = "com.apple.product-type.application";
 		};
+		05EDF0252EB5A001004D7775 /* YaipTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 05EDF02A2EB5A001004D7775 /* Build configuration list for PBXNativeTarget "YaipTests" */;
+			buildPhases = (
+				05EDF0222EB5A001004D7775 /* Sources */,
+				05EDF0232EB5A001004D7775 /* Frameworks */,
+				05EDF0242EB5A001004D7775 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				05EDF0272EB5A001004D7775 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				05EDF0212EB5A001004D7775 /* YaipTests */,
+			);
+			name = YaipTests;
+			productName = YaipTests;
+			productReference = 05EDF0202EB5A001004D7775 /* YaipTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -135,6 +181,10 @@
 				TargetAttributes = {
 					05EDEF492EA6EA8E004D7775 = {
 						CreatedOnToolsVersion = 26.0.1;
+					};
+					05EDF0252EB5A001004D7775 = {
+						CreatedOnToolsVersion = 26.0.1;
+						TestTargetID = 05EDEF492EA6EA8E004D7775;
 					};
 				};
 			};
@@ -157,6 +207,7 @@
 			projectRoot = "";
 			targets = (
 				05EDEF492EA6EA8E004D7775 /* Yaip */,
+				05EDF0252EB5A001004D7775 /* YaipTests */,
 			);
 		};
 /* End PBXProject section */
@@ -170,6 +221,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		05EDF0242EB5A001004D7775 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -180,7 +238,22 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		05EDF0222EB5A001004D7775 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		05EDF0272EB5A001004D7775 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 05EDEF492EA6EA8E004D7775 /* Yaip */;
+			targetProxy = 05EDF0262EB5A001004D7775 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		05EDEF532EA6EA90004D7775 /* Debug */ = {
@@ -380,6 +453,48 @@
 			};
 			name = Release;
 		};
+		05EDF0282EB5A001004D7775 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = Tavern.YaipTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Yaip.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Yaip";
+			};
+			name = Debug;
+		};
+		05EDF0292EB5A001004D7775 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = Tavern.YaipTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Yaip.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Yaip";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -397,6 +512,15 @@
 			buildConfigurations = (
 				05EDEF562EA6EA90004D7775 /* Debug */,
 				05EDEF572EA6EA90004D7775 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		05EDF02A2EB5A001004D7775 /* Build configuration list for PBXNativeTarget "YaipTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				05EDF0282EB5A001004D7775 /* Debug */,
+				05EDF0292EB5A001004D7775 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
