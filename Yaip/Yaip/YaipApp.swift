@@ -60,13 +60,6 @@ struct YaipApp: App {
             return
         }
 
-        // TODO: Add Microsoft MSAL URL handling when Outlook integration is added
-        // if url.scheme?.hasPrefix("msauth") == true {
-        //     MSALPublicClientApplication.handleMSALResponse(url, sourceApplication: nil)
-        //     print("✅ URL handled by MSAL")
-        //     return
-        // }
-
         print("⚠️ URL not recognized by any OAuth provider")
     }
 
