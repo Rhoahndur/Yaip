@@ -13,7 +13,6 @@ struct CalendarSettingsView: View {
     @State private var showingPermissionAlert = false
     @State private var isRequestingApple = false
     @State private var isRequestingGoogle = false
-    @State private var isRequestingOutlook = false
 
     var body: some View {
         Form {
@@ -42,9 +41,6 @@ struct CalendarSettingsView: View {
 
             // Google Calendar Section
             googleCalendarSection
-
-            // Outlook Calendar Section
-            outlookCalendarSection
 
             if calendarManager.hasAnyProviderConnected {
                 Section("Benefits") {
@@ -205,68 +201,6 @@ struct CalendarSettingsView: View {
         }
     }
 
-    // MARK: - Outlook Calendar Section
-    @ViewBuilder
-    private var outlookCalendarSection: some View {
-        Section("Outlook Calendar") {
-            HStack(spacing: 12) {
-                Image(systemName: "envelope")
-                    .font(.title2)
-                    .foregroundStyle(.blue)
-                    .frame(width: 40)
-
-                VStack(alignment: .leading, spacing: 4) {
-                    if let outlook = calendarManager.outlookCalendar, outlook.isAuthorized {
-                        Text("Connected")
-                            .font(.subheadline)
-                            .fontWeight(.semibold)
-                        Text(outlook.userEmail ?? "Microsoft 365")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    } else {
-                        Text("Not Connected")
-                            .font(.subheadline)
-                            .fontWeight(.semibold)
-                            .foregroundStyle(.secondary)
-                        Text("Microsoft 365 calendar")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-
-                Spacer()
-
-                if let outlook = calendarManager.outlookCalendar, outlook.isAuthorized {
-                    Menu {
-                        Button(role: .destructive) {
-                            disconnectOutlookCalendar()
-                        } label: {
-                            Label("Disconnect", systemImage: "xmark")
-                        }
-                    } label: {
-                        Image(systemName: "checkmark.circle.fill")
-                            .foregroundStyle(.green)
-                            .font(.title3)
-                    }
-                } else {
-                    Button {
-                        requestOutlookCalendarAccess()
-                    } label: {
-                        if isRequestingOutlook {
-                            ProgressView()
-                        } else {
-                            Text("Connect")
-                                .fontWeight(.semibold)
-                        }
-                    }
-                    .buttonStyle(.bordered)
-                    .disabled(isRequestingOutlook)
-                }
-            }
-            .padding(.vertical, 4)
-        }
-    }
-
     // MARK: - Actions
     private func requestAppleCalendarAccess() {
         isRequestingApple = true
@@ -311,34 +245,6 @@ struct CalendarSettingsView: View {
         }
     }
 
-    private func requestOutlookCalendarAccess() {
-        isRequestingOutlook = true
-
-        Task {
-            do {
-                // Initialize Outlook Calendar if not already
-                if calendarManager.outlookCalendar == nil {
-                    calendarManager.enableProvider(.outlook)
-                }
-
-                guard let outlook = calendarManager.outlookCalendar else { return }
-                _ = try await outlook.requestAccess()
-                calendarManager.enableProvider(.outlook)
-            } catch {
-                print("❌ Outlook Calendar error: \(error)")
-                showingPermissionAlert = true
-            }
-            isRequestingOutlook = false
-        }
-    }
-
-    private func disconnectOutlookCalendar() {
-        Task {
-            guard let outlook = calendarManager.outlookCalendar else { return }
-            try? await outlook.disconnect()
-            calendarManager.disableProvider(.outlook)
-        }
-    }
 }
 
 struct FeatureRow: View {
