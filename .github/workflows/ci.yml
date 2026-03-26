@@ -30,6 +30,31 @@ jobs:
           GOOGLE_REVERSED_CLIENT_ID = com.googleusercontent.apps.placeholder
           EOF
 
+      - name: Create dummy GoogleService-Info.plist
+        run: |
+          cat > Yaip/Yaip/GoogleService-Info.plist <<'EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>API_KEY</key>
+              <string>ci_placeholder</string>
+              <key>GCM_SENDER_ID</key>
+              <string>000000000000</string>
+              <key>PLIST_VERSION</key>
+              <string>1</string>
+              <key>BUNDLE_ID</key>
+              <string>Tavern.Yaip</string>
+              <key>PROJECT_ID</key>
+              <string>ci-placeholder</string>
+              <key>STORAGE_BUCKET</key>
+              <string>ci-placeholder.appspot.com</string>
+              <key>GOOGLE_APP_ID</key>
+              <string>1:000000000000:ios:0000000000000000</string>
+          </dict>
+          </plist>
+          EOF
+
       - name: Cache SPM dependencies
         uses: actions/cache@v4
         with:
