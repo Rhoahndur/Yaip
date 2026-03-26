@@ -192,9 +192,9 @@ class AuthManager: ObservableObject, AuthManagerProtocol {
         print("🚪 Sign out initiated")
         
         // Stop message listener immediately (doesn't require network)
-        MessageListenerService.shared.stopListening()
+        await MessageListenerService.shared.stopListening()
         print("✅ Stopped message listeners")
-        
+
         // Try to set user offline, but don't wait if network is down
         if let userID = currentUserID {
             Task {
@@ -235,7 +235,7 @@ class AuthManager: ObservableObject, AuthManagerProtocol {
         print("🗑️ Starting account deletion for user: \(userID)")
 
         // Stop message listeners
-        MessageListenerService.shared.stopListening()
+        await MessageListenerService.shared.stopListening()
         print("✅ Stopped message listeners")
 
         // 1. Delete profile image from Firebase Storage
