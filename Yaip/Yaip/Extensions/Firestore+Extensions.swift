@@ -1,13 +1,5 @@
 import FirebaseFirestore
 
-extension QueryDocumentSnapshot {
-    /// Decode this document snapshot into a Codable type, returning nil on failure.
-    /// Replaces the `try? doc.data(as: T.self)` pattern used throughout the codebase.
-    func decoded<T: Decodable>(as type: T.Type) -> T? {
-        try? data(as: type)
-    }
-}
-
 extension DocumentSnapshot {
     /// Decode this document snapshot into a Codable type, returning nil on failure.
     func decoded<T: Decodable>(as type: T.Type) -> T? {
