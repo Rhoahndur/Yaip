@@ -239,7 +239,7 @@ class ConversationListViewModel: ObservableObject {
     }
 
     deinit {
-        stopListening()
+        listenerBag.removeAll()
     }
 }
 

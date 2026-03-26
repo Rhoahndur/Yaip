@@ -1,3 +1,4 @@
+import Foundation
 import os.log
 
 /// Structured logging utility using os.log for categorized, searchable logs.
