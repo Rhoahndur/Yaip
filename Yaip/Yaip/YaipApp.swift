@@ -17,6 +17,9 @@ struct YaipApp: App {
     @ObservedObject private var themeManager = ThemeManager.shared
 
     init() {
+        // Skip initialization during unit tests — tests use mocks via DI
+        guard ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil else { return }
+
         // Initialize Firebase
         FirebaseApp.configure()
 
