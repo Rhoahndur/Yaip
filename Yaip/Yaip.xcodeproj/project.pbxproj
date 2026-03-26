@@ -143,6 +143,7 @@
 				05EDF00D2EAD39E9004D7775 /* GoogleSignIn */,
 				05EDF00F2EAD39E9004D7775 /* GoogleSignInSwift */,
 				05EDF0122EAEE7B8004D7775 /* FirebaseDatabase */,
+				05EDF0332EB60001004D7775 /* FirebaseAnalytics */,
 			);
 			productName = Yaip;
 			productReference = 05EDEF4A2EA6EA8E004D7775 /* Yaip.app */;
@@ -586,6 +587,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 05EDEF5A2EA6EEEC004D7775 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseDatabase;
+		};
+		05EDF0332EB60001004D7775 /* FirebaseAnalytics */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 05EDEF5A2EA6EEEC004D7775 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAnalytics;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
