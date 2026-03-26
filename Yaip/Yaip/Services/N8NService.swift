@@ -1,3 +1,4 @@
+// swiftlint:disable file_length
 //
 //  N8NService.swift
 //  Yaip

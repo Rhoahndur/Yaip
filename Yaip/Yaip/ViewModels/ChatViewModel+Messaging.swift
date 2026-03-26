@@ -282,29 +282,11 @@ extension ChatViewModel {
                 networkMonitor.checkConnectionNow()
             }
 
-            // Update conversation last message
-            let lastMessageText = text.isEmpty ? "📷 Photo" : text
-            let lastMessage = LastMessage(
-                text: lastMessageText,
-                senderID: currentUserID,
-                timestamp: Date()
-            )
-            try await conversationService.updateLastMessage(
+            try await updateConversationAfterSend(
                 conversationID: conversationID,
-                lastMessage: lastMessage
+                text: text,
+                currentUserID: currentUserID
             )
-
-            let otherParticipants = conversation.participants.filter { $0 != currentUserID }
-            if !otherParticipants.isEmpty {
-                do {
-                    try await conversationService.incrementUnreadCount(
-                        conversationID: conversationID,
-                        for: otherParticipants
-                    )
-                } catch {
-                    AppLogger.logSilentFailure(error, context: "incrementUnreadCount", category: .messages)
-                }
-            }
 
         } catch {
             if let index = messages.firstIndex(where: { $0.id == messageID }) {
@@ -531,5 +513,35 @@ extension ChatViewModel {
                 }
             }
         listenerBag.store(convListener, key: "conversation")
+    }
+
+    /// Update conversation metadata after successfully sending a message.
+    private func updateConversationAfterSend(
+        conversationID: String,
+        text: String,
+        currentUserID: String
+    ) async throws {
+        let lastMessageText = text.isEmpty ? "📷 Photo" : text
+        let lastMessage = LastMessage(
+            text: lastMessageText,
+            senderID: currentUserID,
+            timestamp: Date()
+        )
+        try await conversationService.updateLastMessage(
+            conversationID: conversationID,
+            lastMessage: lastMessage
+        )
+
+        let otherParticipants = conversation.participants.filter { $0 != currentUserID }
+        if !otherParticipants.isEmpty {
+            do {
+                try await conversationService.incrementUnreadCount(
+                    conversationID: conversationID,
+                    for: otherParticipants
+                )
+            } catch {
+                AppLogger.logSilentFailure(error, context: "incrementUnreadCount", category: .messages)
+            }
+        }
     }
 }

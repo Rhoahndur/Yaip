@@ -370,12 +370,12 @@ struct ImageCropperView: View {
                 height: imageSize.height * scale
             )
 
-            let x = (300 - scaledSize.width) / 2 + offset.width
-            let y = (300 - scaledSize.height) / 2 + offset.height
+            let originX = (300 - scaledSize.width) / 2 + offset.width
+            let originY = (300 - scaledSize.height) / 2 + offset.height
 
             let drawRect = CGRect(
-                x: x,
-                y: y,
+                x: originX,
+                y: originY,
                 width: scaledSize.width,
                 height: scaledSize.height
             )

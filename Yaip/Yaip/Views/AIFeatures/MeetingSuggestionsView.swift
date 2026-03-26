@@ -66,7 +66,11 @@ struct MeetingSuggestionsView: View {
             } message: {
                 if let timeSlot = selectedTimeSlot,
                    let suggestion = viewModel.meetingSuggestion {
-                    Text("Create calendar event for \(suggestion.detectedIntent)?\n\n\(timeSlot.date.formatted(date: .abbreviated, time: .omitted))\n\(timeSlot.startTime) - \(timeSlot.endTime) (\(suggestion.duration) min)")
+                    Text(
+                        "Create calendar event for \(suggestion.detectedIntent)?\n\n"
+                        + "\(timeSlot.date.formatted(date: .abbreviated, time: .omitted))\n"
+                        + "\(timeSlot.startTime) - \(timeSlot.endTime) (\(suggestion.duration) min)"
+                    )
                 }
             }
             .alert("Event Created", isPresented: $viewModel.showEventCreatedAlert) {

@@ -21,6 +21,15 @@ jobs:
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode.app
 
+      - name: Create CI config
+        run: |
+          cat > Yaip/Config.xcconfig <<'EOF'
+          N8N_WEBHOOK_URL = https://placeholder.example.com/webhook
+          N8N_AUTH_TOKEN = ci_placeholder_token
+          GOOGLE_CLIENT_ID = placeholder.apps.googleusercontent.com
+          GOOGLE_REVERSED_CLIENT_ID = com.googleusercontent.apps.placeholder
+          EOF
+
       - name: Cache SPM dependencies
         uses: actions/cache@v4
         with:

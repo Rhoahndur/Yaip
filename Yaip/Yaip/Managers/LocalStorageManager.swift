@@ -256,7 +256,18 @@ final class LocalConversation {
     var createdAt: Date
     var updatedAt: Date
     
-    init(id: String, type: String, participants: [String], name: String?, imageURL: String?, lastMessageText: String?, lastMessageSenderID: String?, lastMessageTimestamp: Date?, createdAt: Date, updatedAt: Date) {
+    init(
+        id: String,
+        type: String,
+        participants: [String],
+        name: String?,
+        imageURL: String?,
+        lastMessageText: String?,
+        lastMessageSenderID: String?,
+        lastMessageTimestamp: Date?,
+        createdAt: Date,
+        updatedAt: Date
+    ) {
         self.id = id
         self.type = type
         self.participants = participants

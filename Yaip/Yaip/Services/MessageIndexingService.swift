@@ -141,7 +141,7 @@ class MessageIndexingService {
             print("📋 Found \(snapshot.documents.count) messages in Firestore to backfill")
 
             // Debug: show first few message IDs
-            if snapshot.documents.count > 0 {
+            if !snapshot.documents.isEmpty {
                 let firstFew = snapshot.documents.prefix(3).map { $0.documentID }
                 print("   First messages: \(firstFew.joined(separator: ", "))")
             }
