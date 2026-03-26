@@ -14,4 +14,6 @@ final class MockAuthManager: AuthManagerProtocol {
     func signOut() async throws {}
     func resetPassword(email: String) async throws {}
     func deleteAccount() async throws {}
+    var needsProfileSetup: Bool = false
+    func completeProfileSetup() {}
 }
