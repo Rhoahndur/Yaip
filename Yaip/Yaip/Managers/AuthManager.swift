@@ -23,8 +23,8 @@ class AuthManager: ObservableObject, AuthManagerProtocol {
 
     private static let needsProfileSetupKey = "needsProfileSetup"
     private var authStateHandle: AuthStateDidChangeListenerHandle?
-    private let db = Firestore.firestore()
-    private let presenceService = PresenceService.shared
+    private lazy var db = Firestore.firestore()
+    private lazy var presenceService = PresenceService.shared
     
     var currentUserID: String? {
         return Auth.auth().currentUser?.uid
@@ -36,6 +36,8 @@ class AuthManager: ObservableObject, AuthManagerProtocol {
 
     private init() {
         needsProfileSetup = UserDefaults.standard.bool(forKey: Self.needsProfileSetupKey)
+        // Skip Firebase listeners during unit tests — tests inject mocks via DI
+        guard ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil else { return }
         setupAuthStateListener()
     }
 

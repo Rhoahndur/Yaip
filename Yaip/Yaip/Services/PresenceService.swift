@@ -12,8 +12,8 @@ import FirebaseDatabase
 /// Service for managing user presence and online status
 class PresenceService: PresenceServiceProtocol {
     static let shared = PresenceService()
-    private let db = Firestore.firestore()
-    private let realtimeDB = Database.database().reference()
+    private lazy var db = Firestore.firestore()
+    private lazy var realtimeDB = Database.database().reference()
 
     // Heartbeat timer
     private var heartbeatTimer: Timer?

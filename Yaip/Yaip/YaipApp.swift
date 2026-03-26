@@ -39,17 +39,26 @@ struct YaipApp: App {
         NetworkMonitor.shared.startMonitoring()
     }
 
+    private var isRunningTests: Bool {
+        ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+    }
+
     var body: some Scene {
         WindowGroup {
-            NavigationView {
-                ContentView()
-            }
-            .preferredColorScheme(themeManager.currentTheme.colorScheme)
-            .onOpenURL { url in
-                handleOAuthURL(url)
+            if isRunningTests {
+                Text("Running Tests")
+            } else {
+                NavigationView {
+                    ContentView()
+                }
+                .preferredColorScheme(themeManager.currentTheme.colorScheme)
+                .onOpenURL { url in
+                    handleOAuthURL(url)
+                }
             }
         }
         .onChange(of: scenePhase) { oldPhase, newPhase in
+            guard !isRunningTests else { return }
             handleScenePhaseChange(oldPhase, newPhase)
         }
     }
