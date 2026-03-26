@@ -33,7 +33,7 @@ class MessageIndexingService {
         return token
     }()
 
-    private let db = Firestore.firestore()
+    private lazy var db = Firestore.firestore()
 
     // Track indexing operations to avoid duplicates
     private var indexingInProgress = Set<String>()
@@ -50,6 +50,9 @@ class MessageIndexingService {
 
     /// Index a single message immediately after it's sent
     func indexMessage(messageID: String, conversationID: String) async {
+        // Skip during unit tests — Firebase is not configured
+        guard ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil else { return }
+
         // Avoid duplicate indexing
         guard !indexingInProgress.contains(messageID) else {
             print("⏭️  Message \(messageID) already being indexed, skipping")
@@ -209,6 +212,7 @@ class MessageIndexingService {
 
     /// Process offline queue (call this on reconnection)
     func processOfflineQueue() async {
+        guard ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil else { return }
         guard !offlineQueue.isEmpty else {
             print("📭 Offline queue is empty")
             return
