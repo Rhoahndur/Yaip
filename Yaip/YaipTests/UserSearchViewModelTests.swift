@@ -90,15 +90,11 @@ final class UserSearchViewModelTests: XCTestCase {
         mockUserService.shouldFail = true
         await viewModel.searchUsers(query: "Alice")
 
-        try? await Task.sleep(for: .milliseconds(50))
-
         XCTAssertNotNil(viewModel.errorMessage)
     }
 
     func testSearchUsersSetsLoadingFalse() async {
         await viewModel.searchUsers(query: "Alice")
-
-        try? await Task.sleep(for: .milliseconds(50))
 
         XCTAssertFalse(viewModel.isLoading)
     }

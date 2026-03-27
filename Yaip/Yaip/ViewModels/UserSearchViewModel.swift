@@ -34,7 +34,8 @@ class UserSearchViewModel: ObservableObject {
         $searchText
             .debounce(for: .milliseconds(300), scheduler: RunLoop.main)
             .sink { [weak self] searchText in
-                Task {
+                self?.searchTask?.cancel()
+                self?.searchTask = Task {
                     if !searchText.isEmpty {
                         await self?.searchUsers(query: searchText)
                     }
@@ -45,30 +46,26 @@ class UserSearchViewModel: ObservableObject {
 
     /// Search for users by display name
     func searchUsers(query: String) async {
-        searchTask?.cancel()
-
         guard !query.isEmpty else {
             await fetchAllUsers()
             return
         }
 
-        searchTask = Task {
-            isLoading = true
+        isLoading = true
 
-            do {
-                let currentUserID = authManager.currentUserID
-                let searchResults = try await userService.searchUsers(query: query)
-                    .filter { $0.id != currentUserID }
+        do {
+            let currentUserID = authManager.currentUserID
+            let searchResults = try await userService.searchUsers(query: query)
+                .filter { $0.id != currentUserID }
 
-                if Task.isCancelled { return }
+            if Task.isCancelled { return }
 
-                self.users = searchResults
+            self.users = searchResults
+            self.isLoading = false
+        } catch {
+            if !Task.isCancelled {
+                self.errorMessage = error.localizedDescription
                 self.isLoading = false
-            } catch {
-                if !Task.isCancelled {
-                    self.errorMessage = error.localizedDescription
-                    self.isLoading = false
-                }
             }
         }
     }

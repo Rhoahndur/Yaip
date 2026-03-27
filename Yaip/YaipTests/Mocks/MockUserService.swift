@@ -26,7 +26,9 @@ final class MockUserService: UserServiceProtocol {
     func updateProfilePhoto(userID: String, photoURL: String) async throws {}
 
     func searchUsers(query: String) async throws -> [User] {
-        users.values.filter { $0.displayName.localizedCaseInsensitiveContains(query) }
+        if shouldFail { throw NSError(domain: "Test", code: 1) }
+        if query.isEmpty { return Array(users.values) }
+        return users.values.filter { $0.displayName.localizedCaseInsensitiveContains(query) }
     }
 
     func clearCache() {}
