@@ -64,9 +64,12 @@ struct AILoadingView: View {
             withAnimation(.linear(duration: 2).repeatForever(autoreverses: false)) {
                 isAnimating = true
             }
-
-            // Dots animation
-            Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { _ in
+        }
+        .task {
+            // Dots animation — auto-cancelled when the view disappears
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .milliseconds(500))
+                guard !Task.isCancelled else { break }
                 dotCount = (dotCount + 1) % 4
             }
         }
