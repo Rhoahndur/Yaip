@@ -17,16 +17,11 @@ final class MockImageUploadManager: ImageUploadManagerProtocol {
     }
 
     func uploadImage(for messageID: String, conversationID: String) async -> String? {
-        if let url = uploadedURLs[messageID] {
-            imageStates[messageID] = .uploaded(url: url)
-            return url
-        }
-        imageStates[messageID] = .failed(error: "Mock upload failed", retryCount: 0)
-        return nil
+        resolveUpload(for: messageID, baseRetryCount: 0)
     }
 
     func retryUpload(for messageID: String, conversationID: String) async -> String? {
-        uploadedURLs[messageID]
+        resolveUpload(for: messageID, baseRetryCount: currentRetryCount(for: messageID) + 1)
     }
 
     func hasUploadableImage(for messageID: String) -> Bool {
@@ -45,10 +40,31 @@ final class MockImageUploadManager: ImageUploadManagerProtocol {
     func retryAllFailed(in conversationID: String, messageIDs: [String]) async -> [String: String] {
         var results: [String: String] = [:]
         for id in messageIDs {
-            if let url = uploadedURLs[id] { results[id] = url }
+            if let url = resolveUpload(for: id, baseRetryCount: currentRetryCount(for: id) + 1) {
+                results[id] = url
+            }
         }
         return results
     }
 
     func checkForStuckUploads() {}
+
+    // MARK: - Private
+
+    @discardableResult
+    private func resolveUpload(for messageID: String, baseRetryCount: Int) -> String? {
+        if let url = uploadedURLs[messageID] {
+            imageStates[messageID] = .uploaded(url: url)
+            return url
+        }
+        imageStates[messageID] = .failed(error: "Mock upload failed", retryCount: baseRetryCount)
+        return nil
+    }
+
+    private func currentRetryCount(for messageID: String) -> Int {
+        if case .failed(_, let count) = imageStates[messageID] {
+            return count
+        }
+        return 0
+    }
 }

@@ -6,6 +6,7 @@ final class MockLocalStorageManager: LocalStorageManagerProtocol {
     var savedMessages: [Message] = []
     var savedConversations: [Conversation] = []
     var syncedMessageIDs: [String] = []
+    var savedImages: [String: UIImage] = [:]
     var shouldFail = false
 
     func saveMessage(_ message: Message) throws {
@@ -45,8 +46,14 @@ final class MockLocalStorageManager: LocalStorageManagerProtocol {
     func fetchConversations() throws -> [Conversation] { savedConversations }
     func deleteConversation(id: String) throws { savedConversations.removeAll { $0.id == id } }
 
-    func saveImage(_ image: UIImage, forMessageID messageID: String) {}
-    func loadImage(forMessageID messageID: String) -> UIImage? { nil }
-    func deleteImage(forMessageID messageID: String) {}
+    func saveImage(_ image: UIImage, forMessageID messageID: String) {
+        savedImages[messageID] = image
+    }
+    func loadImage(forMessageID messageID: String) -> UIImage? {
+        savedImages[messageID]
+    }
+    func deleteImage(forMessageID messageID: String) {
+        savedImages.removeValue(forKey: messageID)
+    }
     func clearAll() throws { savedMessages.removeAll(); savedConversations.removeAll() }
 }
