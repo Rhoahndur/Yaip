@@ -46,4 +46,16 @@ final class MockConversationService: ConversationServiceProtocol {
         if shouldFail { throw ConversationError.invalidID }
         incrementedUnreadCounts.append((conversationID, userIDs))
     }
+
+    var addedParticipants: [(conversationID: String, userID: String)] = []
+    func addParticipant(conversationID: String, userID: String) async throws {
+        if shouldFail { throw ConversationError.invalidID }
+        addedParticipants.append((conversationID, userID))
+    }
+
+    var removedParticipants: [(conversationID: String, userID: String)] = []
+    func removeParticipant(conversationID: String, userID: String) async throws {
+        if shouldFail { throw ConversationError.invalidID }
+        removedParticipants.append((conversationID, userID))
+    }
 }
