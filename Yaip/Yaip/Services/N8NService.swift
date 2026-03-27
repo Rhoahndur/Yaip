@@ -9,7 +9,7 @@
 import Foundation
 
 /// Service for N8N webhook-based AI agent communication
-class N8NService {
+class N8NService: N8NServiceProtocol {
     static let shared = N8NService()
 
     // Load configuration from Info.plist (values come from Config.xcconfig)
@@ -605,21 +605,21 @@ extension N8NService {
             detectedIntent: "Team wants to schedule Q4 planning meeting",
             suggestedTimes: [
                 TimeSlot(
-                    date: Calendar.current.date(byAdding: .day, value: 2, to: Date())!,
+                    date: Calendar.current.date(byAdding: .day, value: 2, to: Date()) ?? Date(),
                     startTime: "14:00",
                     endTime: "15:00",
                     available: ["Sarah Chen", "Mike Johnson", "You"],
                     conflicts: []
                 ),
                 TimeSlot(
-                    date: Calendar.current.date(byAdding: .day, value: 3, to: Date())!,
+                    date: Calendar.current.date(byAdding: .day, value: 3, to: Date()) ?? Date(),
                     startTime: "10:00",
                     endTime: "11:00",
                     available: ["Sarah Chen", "Mike Johnson", "You"],
                     conflicts: []
                 ),
                 TimeSlot(
-                    date: Calendar.current.date(byAdding: .day, value: 5, to: Date())!,
+                    date: Calendar.current.date(byAdding: .day, value: 5, to: Date()) ?? Date(),
                     startTime: "15:00",
                     endTime: "16:00",
                     available: ["Sarah Chen", "Mike Johnson", "You", "Emma Davis"],
@@ -644,7 +644,7 @@ extension N8NService {
                 impact: .high,
                 category: .technical,
                 context: "Discussed during architecture review meeting. All senior engineers agreed.",
-                timestamp: Calendar.current.date(byAdding: .day, value: -2, to: Date())!,
+                timestamp: Calendar.current.date(byAdding: .day, value: -2, to: Date()) ?? Date(),
                 messageID: "msg-decision-1"
             ),
             Decision(
@@ -655,7 +655,7 @@ extension N8NService {
                 impact: .high,
                 category: .business,
                 context: "Budget approved by leadership. HR to start recruitment immediately.",
-                timestamp: Calendar.current.date(byAdding: .day, value: -5, to: Date())!,
+                timestamp: Calendar.current.date(byAdding: .day, value: -5, to: Date()) ?? Date(),
                 messageID: "msg-decision-2"
             ),
             Decision(
@@ -666,7 +666,7 @@ extension N8NService {
                 impact: .low,
                 category: .process,
                 context: "Proposed by remote team members, no objections from anyone.",
-                timestamp: Calendar.current.date(byAdding: .day, value: -1, to: Date())!,
+                timestamp: Calendar.current.date(byAdding: .day, value: -1, to: Date()) ?? Date(),
                 messageID: "msg-decision-3"
             )
         ]
@@ -699,7 +699,7 @@ extension N8NService {
                 messageID: "msg-search-1",
                 text: "Let's discuss the Q4 budget allocation. We need to finalize numbers by EOW.",
                 senderName: "Sarah Chen",
-                timestamp: Calendar.current.date(byAdding: .day, value: -3, to: Date())!,
+                timestamp: Calendar.current.date(byAdding: .day, value: -3, to: Date()) ?? Date(),
                 relevanceScore: 0.94,
                 matchType: .semantic
             ),
@@ -707,7 +707,7 @@ extension N8NService {
                 messageID: "msg-search-2",
                 text: "Budget increase approved! Marketing gets additional $50K for Q4.",
                 senderName: "Mike Johnson",
-                timestamp: Calendar.current.date(byAdding: .day, value: -1, to: Date())!,
+                timestamp: Calendar.current.date(byAdding: .day, value: -1, to: Date()) ?? Date(),
                 relevanceScore: 0.87,
                 matchType: .keyword
             )
@@ -722,7 +722,7 @@ extension N8NService {
                 messageID: "msg-rag-1",
                 text: "The Q4 budget was increased to $150K total, with $50K allocated specifically for marketing initiatives.",
                 senderName: "Sarah Chen",
-                timestamp: Calendar.current.date(byAdding: .day, value: -3, to: Date())!,
+                timestamp: Calendar.current.date(byAdding: .day, value: -3, to: Date()) ?? Date(),
                 relevanceScore: 0.96,
                 matchType: .semantic
             ),
@@ -730,7 +730,7 @@ extension N8NService {
                 messageID: "msg-rag-2",
                 text: "Budget approval came through! We can now proceed with hiring two additional engineers.",
                 senderName: "Mike Johnson",
-                timestamp: Calendar.current.date(byAdding: .day, value: -5, to: Date())!,
+                timestamp: Calendar.current.date(byAdding: .day, value: -5, to: Date()) ?? Date(),
                 relevanceScore: 0.89,
                 matchType: .hybrid
             ),
@@ -738,7 +738,7 @@ extension N8NService {
                 messageID: "msg-rag-3",
                 text: "Just confirming - the marketing budget is $50K for Q4, right?",
                 senderName: "Emma Davis",
-                timestamp: Calendar.current.date(byAdding: .day, value: -1, to: Date())!,
+                timestamp: Calendar.current.date(byAdding: .day, value: -1, to: Date()) ?? Date(),
                 relevanceScore: 0.82,
                 matchType: .keyword
             )

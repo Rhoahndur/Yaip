@@ -10,7 +10,7 @@ import Combine
 
 /// Manages all calendar providers and coordinates availability checking
 @MainActor
-class CalendarManager: ObservableObject {
+class CalendarManager: ObservableObject, CalendarManagerProtocol {
     static let shared = CalendarManager()
 
     // Calendar providers

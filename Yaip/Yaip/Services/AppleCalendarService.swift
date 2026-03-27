@@ -11,7 +11,7 @@ import Combine
 
 /// Service for accessing Apple Calendar (EventKit) to check availability
 @MainActor
-class AppleCalendarService: ObservableObject, CalendarProvider {
+class AppleCalendarService: ObservableObject, CalendarProvider, EventCreatorProtocol {
     static let shared = AppleCalendarService()
 
     private let eventStore = EKEventStore()
