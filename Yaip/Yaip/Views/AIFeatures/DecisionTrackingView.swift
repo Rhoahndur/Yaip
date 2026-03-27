@@ -12,6 +12,9 @@ struct DecisionTrackingView: View {
     @Environment(\.dismiss) private var dismiss
     var onJumpToMessage: ((String) -> Void)?
 
+    @State private var filterImpact: Decision.Impact?
+    @State private var filterCategory: Decision.Category?
+
     var body: some View {
         NavigationStack {
             Group {
@@ -35,7 +38,6 @@ struct DecisionTrackingView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
                         Button {
-                            // Refresh decisions
                             viewModel.extractDecisions()
                         } label: {
                             Label("Refresh", systemImage: "arrow.clockwise")
@@ -43,21 +45,86 @@ struct DecisionTrackingView: View {
 
                         Divider()
 
-                        Button {
-                            // Filter by high impact
-                            // TODO: Implement filtering
-                        } label: {
-                            Label("High Impact Only", systemImage: "exclamationmark.triangle")
+                        // Impact filters
+                        Section("Filter by Impact") {
+                            Button {
+                                filterImpact = (filterImpact == .high) ? nil : .high
+                                filterCategory = nil
+                            } label: {
+                                Label(
+                                    "High Impact Only",
+                                    systemImage: filterImpact == .high ? "checkmark" : "exclamationmark.triangle"
+                                )
+                            }
+
+                            Button {
+                                filterImpact = (filterImpact == .medium) ? nil : .medium
+                                filterCategory = nil
+                            } label: {
+                                Label(
+                                    "Medium Impact Only",
+                                    systemImage: filterImpact == .medium ? "checkmark" : "exclamationmark.circle"
+                                )
+                            }
+
+                            Button {
+                                filterImpact = (filterImpact == .low) ? nil : .low
+                                filterCategory = nil
+                            } label: {
+                                Label(
+                                    "Low Impact Only",
+                                    systemImage: filterImpact == .low ? "checkmark" : "info.circle"
+                                )
+                            }
                         }
 
-                        Button {
-                            // Filter by category
-                            // TODO: Implement filtering
-                        } label: {
-                            Label("Filter by Category", systemImage: "line.3.horizontal.decrease.circle")
+                        Divider()
+
+                        // Category filters
+                        Section("Filter by Category") {
+                            Button {
+                                filterCategory = (filterCategory == .technical) ? nil : .technical
+                                filterImpact = nil
+                            } label: {
+                                Label(
+                                    "Technical",
+                                    systemImage: filterCategory == .technical ? "checkmark" : "wrench.and.screwdriver"
+                                )
+                            }
+
+                            Button {
+                                filterCategory = (filterCategory == .business) ? nil : .business
+                                filterImpact = nil
+                            } label: {
+                                Label(
+                                    "Business",
+                                    systemImage: filterCategory == .business ? "checkmark" : "briefcase.fill"
+                                )
+                            }
+
+                            Button {
+                                filterCategory = (filterCategory == .process) ? nil : .process
+                                filterImpact = nil
+                            } label: {
+                                Label(
+                                    "Process",
+                                    systemImage: filterCategory == .process ? "checkmark" : "arrow.triangle.2.circlepath"
+                                )
+                            }
+                        }
+
+                        if filterImpact != nil || filterCategory != nil {
+                            Divider()
+
+                            Button(role: .destructive) {
+                                filterImpact = nil
+                                filterCategory = nil
+                            } label: {
+                                Label("Clear Filters", systemImage: "xmark.circle")
+                            }
                         }
                     } label: {
-                        Image(systemName: "ellipsis.circle")
+                        Image(systemName: hasActiveFilter ? "line.3.horizontal.decrease.circle.fill" : "ellipsis.circle")
                     }
                 }
             }
@@ -96,19 +163,19 @@ struct DecisionTrackingView: View {
             Section {
                 HStack(spacing: 24) {
                     StatBox(
-                        value: viewModel.decisions.filter { $0.impact == .high }.count,
+                        value: highImpactDecisions.count,
                         label: "High Impact",
                         color: .red
                     )
 
                     StatBox(
-                        value: viewModel.decisions.filter { $0.impact == .medium }.count,
+                        value: mediumImpactDecisions.count,
                         label: "Medium",
                         color: .orange
                     )
 
                     StatBox(
-                        value: viewModel.decisions.filter { $0.impact == .low }.count,
+                        value: lowImpactDecisions.count,
                         label: "Low",
                         color: .gray
                     )
@@ -163,16 +230,31 @@ struct DecisionTrackingView: View {
         }
     }
 
+    private var hasActiveFilter: Bool {
+        filterImpact != nil || filterCategory != nil
+    }
+
+    private var filteredDecisions: [Decision] {
+        var results = viewModel.decisions
+        if let impact = filterImpact {
+            results = results.filter { $0.impact == impact }
+        }
+        if let category = filterCategory {
+            results = results.filter { $0.category == category }
+        }
+        return results
+    }
+
     private var highImpactDecisions: [Decision] {
-        viewModel.decisions.filter { $0.impact == .high }
+        filteredDecisions.filter { $0.impact == .high }
     }
 
     private var mediumImpactDecisions: [Decision] {
-        viewModel.decisions.filter { $0.impact == .medium }
+        filteredDecisions.filter { $0.impact == .medium }
     }
 
     private var lowImpactDecisions: [Decision] {
-        viewModel.decisions.filter { $0.impact == .low }
+        filteredDecisions.filter { $0.impact == .low }
     }
 }
 

@@ -10,6 +10,7 @@ import SwiftUI
 struct ActionItemsView: View {
     @ObservedObject var viewModel: AIFeaturesViewModel
     @Environment(\.dismiss) private var dismiss
+    @State private var displayError: UserFacingError?
     var onJumpToMessage: ((String) -> Void)?
 
     var body: some View {
@@ -54,6 +55,15 @@ struct ActionItemsView: View {
                     } label: {
                         Image(systemName: "line.3.horizontal.decrease.circle")
                     }
+                }
+            }
+            .errorToast($displayError, onRetry: {
+                viewModel.extractActionItems()
+            })
+            .onChange(of: viewModel.actionItemsError) { _, newValue in
+                if let msg = newValue {
+                    displayError = .aiFeatureFailed(msg)
+                    viewModel.actionItemsError = nil
                 }
             }
         }
