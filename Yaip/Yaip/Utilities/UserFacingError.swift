@@ -8,6 +8,7 @@ enum UserFacingError: Equatable {
     case imageUploadFailed
     case authenticationFailed(String)
     case conversationLoadFailed
+    case aiFeatureFailed(String)
     case unknown(String)
 
     var title: String {
@@ -17,6 +18,7 @@ enum UserFacingError: Equatable {
         case .imageUploadFailed: "Upload Failed"
         case .authenticationFailed: "Sign In Failed"
         case .conversationLoadFailed: "Couldn't Load Chat"
+        case .aiFeatureFailed: "AI Feature Failed"
         case .unknown: "Something Went Wrong"
         }
     }
@@ -33,6 +35,8 @@ enum UserFacingError: Equatable {
             detail
         case .conversationLoadFailed:
             "We couldn't load this conversation. Pull to refresh."
+        case .aiFeatureFailed(let detail):
+            detail
         case .unknown(let detail):
             detail
         }
@@ -40,7 +44,7 @@ enum UserFacingError: Equatable {
 
     var isRetryable: Bool {
         switch self {
-        case .networkUnavailable, .messageSendFailed, .imageUploadFailed, .conversationLoadFailed:
+        case .networkUnavailable, .messageSendFailed, .imageUploadFailed, .conversationLoadFailed, .aiFeatureFailed:
             true
         case .authenticationFailed, .unknown:
             false

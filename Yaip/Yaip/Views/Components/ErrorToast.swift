@@ -60,11 +60,10 @@ struct ErrorToast: View {
             .shadow(color: .black.opacity(0.15), radius: 8, y: 4)
             .padding(.horizontal, 16)
             .transition(.move(edge: .top).combined(with: .opacity))
-            .onAppear {
-                // Auto-dismiss after 5 seconds
-                DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
-                    dismiss()
-                }
+            .task {
+                // Auto-dismiss after 5 seconds (cancelled if view removed)
+                try? await Task.sleep(for: .seconds(5))
+                dismiss()
             }
         }
     }
