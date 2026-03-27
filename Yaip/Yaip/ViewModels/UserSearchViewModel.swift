@@ -6,7 +6,6 @@
 //
 
 import Foundation
-import FirebaseFirestore
 import Combine
 
 /// ViewModel for searching and selecting users
@@ -16,24 +15,26 @@ class UserSearchViewModel: ObservableObject {
     @Published var searchText = ""
     @Published var isLoading = false
     @Published var errorMessage: String?
-    
-    private let db = Firestore.firestore()
+
+    private let userService: UserServiceProtocol
     private let authManager: AuthManagerProtocol
     private var searchTask: Task<Void, Never>?
+    private var cancellables = Set<AnyCancellable>()
 
-    init(authManager: AuthManagerProtocol = AuthManager.shared) {
+    init(
+        userService: UserServiceProtocol = UserService.shared,
+        authManager: AuthManagerProtocol = AuthManager.shared
+    ) {
+        self.userService = userService
         self.authManager = authManager
-        // Setup search debouncing
         setupSearchDebounce()
     }
-    
+
     private func setupSearchDebounce() {
-        // Debounce search to avoid too many Firestore queries
         $searchText
             .debounce(for: .milliseconds(300), scheduler: RunLoop.main)
             .sink { [weak self] searchText in
                 Task {
-                    // Only search if there's text, otherwise keep showing all users
                     if !searchText.isEmpty {
                         await self?.searchUsers(query: searchText)
                     }
@@ -41,41 +42,26 @@ class UserSearchViewModel: ObservableObject {
             }
             .store(in: &cancellables)
     }
-    
-    private var cancellables = Set<AnyCancellable>()
-    
+
     /// Search for users by display name
     func searchUsers(query: String) async {
-        // Cancel previous search
         searchTask?.cancel()
-        
+
         guard !query.isEmpty else {
-            // If query is empty, fetch all users instead of clearing
             await fetchAllUsers()
             return
         }
-        
+
         searchTask = Task {
             isLoading = true
-            
+
             do {
-                // Search users whose displayName starts with the query
-                let snapshot = try await db.collection(Constants.Collections.users)
-                    .whereField("displayName", isGreaterThanOrEqualTo: query)
-                    .whereField("displayName", isLessThan: query + "\u{f8ff}")
-                    .limit(to: 20)
-                    .getDocuments()
-                
-                if Task.isCancelled { return }
-                
                 let currentUserID = authManager.currentUserID
-                let searchResults = snapshot.documents.compactMap { doc in
-                    try? doc.data(as: User.self)
-                }.filter { user in
-                    // Filter out current user
-                    user.id != currentUserID
-                }
-                
+                let searchResults = try await userService.searchUsers(query: query)
+                    .filter { $0.id != currentUserID }
+
+                if Task.isCancelled { return }
+
                 self.users = searchResults
                 self.isLoading = false
             } catch {
@@ -86,23 +72,16 @@ class UserSearchViewModel: ObservableObject {
             }
         }
     }
-    
-    /// Fetch all users (for testing/demo purposes)
+
+    /// Fetch all users (for initial display / add-participant sheets)
     func fetchAllUsers() async {
         isLoading = true
-        
+
         do {
-            let snapshot = try await db.collection(Constants.Collections.users)
-                .limit(to: 50)
-                .getDocuments()
-            
             let currentUserID = authManager.currentUserID
-            let allUsers = snapshot.documents.compactMap { doc in
-                try? doc.data(as: User.self)
-            }.filter { user in
-                user.id != currentUserID
-            }
-            
+            let allUsers = try await userService.searchUsers(query: "")
+                .filter { $0.id != currentUserID }
+
             self.users = allUsers
             self.isLoading = false
         } catch {
