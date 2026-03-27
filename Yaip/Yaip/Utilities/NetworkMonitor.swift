@@ -313,5 +313,6 @@ class NetworkMonitor: ObservableObject, NetworkMonitorProtocol {
 // MARK: - Notification Names
 extension Notification.Name {
     static let networkDidReconnect = Notification.Name("networkDidReconnect")
+    static let networkDidDisconnect = Notification.Name("networkDidDisconnect")
 }
 
