@@ -17,6 +17,7 @@ enum Constants {
         static let decisions = "decisions"
         static let userPresence = "userPresence"
         static let userPriority = "userPriority"
+        static let actionItems = "actionItems"
         static let aiCache = "aiCache"
     }
     
