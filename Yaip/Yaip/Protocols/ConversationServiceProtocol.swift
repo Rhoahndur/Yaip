@@ -31,4 +31,10 @@ protocol ConversationServiceProtocol {
 
     /// Increment the unread count for the specified users in a conversation.
     func incrementUnreadCount(conversationID: String, for userIDs: [String]) async throws
+
+    /// Add a participant to a group conversation.
+    func addParticipant(conversationID: String, userID: String) async throws
+
+    /// Remove a participant from a group conversation (used when leaving a group).
+    func removeParticipant(conversationID: String, userID: String) async throws
 }

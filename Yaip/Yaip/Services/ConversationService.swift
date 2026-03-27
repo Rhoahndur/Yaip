@@ -114,6 +114,26 @@ class ConversationService: ConversationServiceProtocol {
             .document(conversationID)
             .updateData(updateData)
     }
+
+    /// Add a participant to a group conversation
+    func addParticipant(conversationID: String, userID: String) async throws {
+        try await db.collection(Constants.Collections.conversations)
+            .document(conversationID)
+            .updateData([
+                "participants": FieldValue.arrayUnion([userID]),
+                "updatedAt": FieldValue.serverTimestamp()
+            ])
+    }
+
+    /// Remove a participant from a group conversation
+    func removeParticipant(conversationID: String, userID: String) async throws {
+        try await db.collection(Constants.Collections.conversations)
+            .document(conversationID)
+            .updateData([
+                "participants": FieldValue.arrayRemove([userID]),
+                "updatedAt": FieldValue.serverTimestamp()
+            ])
+    }
 }
 
 enum ConversationError: LocalizedError {
