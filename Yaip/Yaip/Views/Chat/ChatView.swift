@@ -26,6 +26,7 @@ struct ChatView: View {
     @State private var shouldAnimateHighlight = false
     @State private var scrollProxy: ScrollViewProxy?
     @State private var showGroupSettings = false
+    @State private var displayError: UserFacingError?
 
     init(conversation: Conversation, scrollToMessageID: String? = nil) {
         self.conversation = conversation
@@ -209,7 +210,7 @@ struct ChatView: View {
                         Button {
                             showGroupSettings = true
                         } label: {
-                            Image(systemName: "info.circle")
+                            Image(systemName: "gearshape")
                                 .foregroundStyle(.blue)
                         }
                     }
@@ -356,6 +357,15 @@ struct ChatView: View {
             }
         }
         .networkStateBanner()
+        .errorToast($displayError, onRetry: {
+            Task { await viewModel.retryAllFailedMessages() }
+        })
+        .onChange(of: viewModel.errorMessage) { _, newValue in
+            if newValue != nil {
+                displayError = .messageSendFailed
+                viewModel.errorMessage = nil
+            }
+        }
         .onNetworkReconnect {
             await viewModel.retryAllFailedMessages()
             

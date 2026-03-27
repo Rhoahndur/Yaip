@@ -12,7 +12,8 @@ struct PendingChatView: View {
     let pendingConversation: PendingConversation
     @StateObject private var viewModel: PendingChatViewModel
     @Environment(\.dismiss) private var dismiss
-    
+    @State private var displayError: UserFacingError?
+
     init(pendingConversation: PendingConversation) {
         self.pendingConversation = pendingConversation
         self._viewModel = StateObject(wrappedValue: PendingChatViewModel(pendingConversation: pendingConversation))
@@ -72,7 +73,14 @@ struct PendingChatView: View {
                 }
             }
         }
+        .errorToast($displayError, onRetry: {
+            Task { await viewModel.sendFirstMessage() }
+        })
+        .onChange(of: viewModel.errorMessage) { _, newValue in
+            if newValue != nil {
+                displayError = .messageSendFailed
+                viewModel.errorMessage = nil
+            }
+        }
     }
 }
-
-
