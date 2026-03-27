@@ -233,7 +233,7 @@ final class LocalMessage {
             senderID: senderID,
             text: text,
             mediaURL: mediaURL,
-            mediaType: mediaType != nil ? MediaType(rawValue: mediaType!) : nil,
+            mediaType: mediaType.flatMap { MediaType(rawValue: $0) },
             timestamp: timestamp,
             status: MessageStatus(rawValue: status) ?? .sent,
             readBy: readBy
@@ -296,15 +296,20 @@ final class LocalConversation {
     }
     
     func toConversation() -> Conversation {
+        let lastMessage: LastMessage?
+        if let text = lastMessageText, let senderID = lastMessageSenderID, let timestamp = lastMessageTimestamp {
+            lastMessage = LastMessage(text: text, senderID: senderID, timestamp: timestamp)
+        } else {
+            lastMessage = nil
+        }
+
         var conversation = Conversation(
             id: nil,
             type: ConversationType(rawValue: type) ?? .oneOnOne,
             participants: participants,
             name: name,
             imageURL: imageURL,
-            lastMessage: lastMessageText != nil && lastMessageSenderID != nil && lastMessageTimestamp != nil
-                ? LastMessage(text: lastMessageText!, senderID: lastMessageSenderID!, timestamp: lastMessageTimestamp!)
-                : nil,
+            lastMessage: lastMessage,
             createdAt: createdAt,
             updatedAt: updatedAt,
             unreadCount: [:]
