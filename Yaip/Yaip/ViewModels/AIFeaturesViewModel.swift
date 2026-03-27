@@ -65,14 +65,33 @@ class AIFeaturesViewModel: ObservableObject {
     @Published var showEventErrorAlert = false
     @Published var eventCreationError: String?
 
-    private let n8nService = N8NService.shared
+    private let n8nService: any N8NServiceProtocol
+    private let authManager: any AuthManagerProtocol
+    private let messageService: any MessageServiceProtocol
+    private let conversationService: any ConversationServiceProtocol
+    private let calendarManager: any CalendarManagerProtocol
+    private let eventCreator: any EventCreatorProtocol
     private let conversationID: String
     private var cancellables = Set<AnyCancellable>()
 
     // MARK: - Initialization
 
-    init(conversationID: String) {
+    init(
+        conversationID: String,
+        n8nService: any N8NServiceProtocol = N8NService.shared,
+        authManager: any AuthManagerProtocol = AuthManager.shared,
+        messageService: any MessageServiceProtocol = MessageService.shared,
+        conversationService: any ConversationServiceProtocol = ConversationService.shared,
+        calendarManager: any CalendarManagerProtocol = CalendarManager.shared,
+        eventCreator: any EventCreatorProtocol = AppleCalendarService.shared
+    ) {
         self.conversationID = conversationID
+        self.n8nService = n8nService
+        self.authManager = authManager
+        self.messageService = messageService
+        self.conversationService = conversationService
+        self.calendarManager = calendarManager
+        self.eventCreator = eventCreator
     }
 
     // MARK: - Thread Summarization
@@ -143,8 +162,34 @@ class AIFeaturesViewModel: ObservableObject {
 
         actionItems[index] = updatedItem
 
-        // TODO: Sync status to Firestore
-        print("📝 Toggled action item: \(item.task)")
+        Task {
+            await syncActionItemStatus(updatedItem)
+        }
+    }
+
+    private func syncActionItemStatus(_ item: ActionItem) async {
+        let db = Firestore.firestore()
+        let docRef = db.collection(Constants.Collections.conversations)
+            .document(conversationID)
+            .collection(Constants.Collections.actionItems)
+            .document(item.id)
+
+        do {
+            var data: [String: Any] = [
+                "task": item.task,
+                "priority": item.priority.rawValue,
+                "status": item.status.rawValue,
+                "messageID": item.messageID,
+                "context": item.context,
+                "updatedAt": FieldValue.serverTimestamp()
+            ]
+            if let assignee = item.assignee {
+                data["assignee"] = assignee
+            }
+            try await docRef.setData(data, merge: true)
+        } catch {
+            print("Failed to sync action item status: \(error)")
+        }
     }
 
     // MARK: - Meeting Scheduler
@@ -169,8 +214,8 @@ class AIFeaturesViewModel: ObservableObject {
                 let participantNames = await fetchParticipantNames()
 
                 // Enhance with calendar availability if any provider is authorized
-                if CalendarManager.shared.hasAnyProviderConnected {
-                    let enrichedTimeSlots = await CalendarManager.shared.checkAvailability(
+                if calendarManager.hasAnyProviderConnected {
+                    let enrichedTimeSlots = await calendarManager.checkAvailability(
                         for: suggestion.suggestedTimes
                     )
 
@@ -287,20 +332,16 @@ class AIFeaturesViewModel: ObservableObject {
             return false
         }
 
-        // Check if Apple Calendar is authorized
-        guard AppleCalendarService.shared.isAuthorized else {
-            print("⚠️ Calendar access not authorized")
+        guard eventCreator.isAuthorized else {
             eventCreationError = "Calendar access not granted. Please enable calendar access in Settings."
             return false
         }
 
-        // Combine date and time into start/end dates
         let startDate = combineDateAndTime(date: timeSlot.date, time: timeSlot.startTime)
         let endDate = combineDateAndTime(date: timeSlot.date, time: timeSlot.endTime)
 
-        // Create calendar event using EventKit
         do {
-            let eventID = try await AppleCalendarService.shared.createEvent(
+            let eventID = try await eventCreator.createEvent(
                 title: suggestion.detectedIntent,
                 startDate: startDate,
                 endDate: endDate,
@@ -316,7 +357,8 @@ class AIFeaturesViewModel: ObservableObject {
     }
 
     private func sendConfirmationMessage(for timeSlot: TimeSlot) async {
-        guard let suggestion = meetingSuggestion else { return }
+        guard let suggestion = meetingSuggestion,
+              let currentUserID = authManager.currentUserID else { return }
 
         let formatter = DateFormatter()
         formatter.dateStyle = .medium
@@ -325,17 +367,43 @@ class AIFeaturesViewModel: ObservableObject {
         let startDate = combineDateAndTime(date: timeSlot.date, time: timeSlot.startTime)
 
         let confirmationText = """
-        📅 Meeting scheduled: \(suggestion.detectedIntent)
-        🗓 \(formatter.string(from: startDate))
-        ⏱ Duration: \(suggestion.duration) minutes
-        👥 Participants: \(suggestion.participants.joined(separator: ", "))
+        Meeting scheduled: \(suggestion.detectedIntent)
+        \(formatter.string(from: startDate))
+        Duration: \(suggestion.duration) minutes
+        Participants: \(suggestion.participants.joined(separator: ", "))
         """
 
-        // TODO: Send this as a message to the conversation
-        print("💬 Confirmation message: \(confirmationText)")
+        let messageID = UUID().uuidString
+        var message = Message(
+            id: messageID,
+            conversationID: conversationID,
+            senderID: currentUserID,
+            text: confirmationText,
+            mediaURL: nil,
+            mediaType: nil,
+            timestamp: Date(),
+            status: .staged,
+            readBy: [currentUserID]
+        )
+
+        do {
+            try await messageService.sendMessage(message)
+            message.status = .sent
+
+            let lastMessage = LastMessage(
+                text: confirmationText,
+                senderID: currentUserID,
+                timestamp: message.timestamp
+            )
+            try await conversationService.updateLastMessage(
+                conversationID: conversationID,
+                lastMessage: lastMessage
+            )
+        } catch {
+            print("Failed to send confirmation message: \(error)")
+        }
     }
 
-    /// Combine date and time string into a single Date
     private func combineDateAndTime(date: Date, time: String) -> Date {
         let calendar = Calendar.current
         let dateComponents = calendar.dateComponents([.year, .month, .day], from: date)
