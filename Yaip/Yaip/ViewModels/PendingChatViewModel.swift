@@ -91,13 +91,19 @@ class PendingChatViewModel: ObservableObject {
             print("📝 Creating conversation in Firestore...")
             let conversation = pendingConversation.toConversation()
             try await conversationService.createConversation(conversation)
-            print("✅ Conversation created: \(conversation.id ?? "no-id")")
-            
+
+            guard let conversationID = conversation.id else {
+                errorMessage = "Failed to create conversation ID"
+                isCreating = false
+                return
+            }
+            print("✅ Conversation created: \(conversationID)")
+
             // 3. Send the first message
             print("📤 Sending first message...")
             let message = Message(
                 id: UUID().uuidString,
-                conversationID: conversation.id!,
+                conversationID: conversationID,
                 senderID: currentUserID,
                 text: messageText.trimmingCharacters(in: .whitespaces),
                 mediaURL: mediaURL,
@@ -106,10 +112,10 @@ class PendingChatViewModel: ObservableObject {
                 status: .sent,
                 readBy: [currentUserID]
             )
-            
+
             try await messageService.sendMessage(message)
             print("✅ First message sent!")
-            
+
             // 4. Update conversation's lastMessage field
             let lastMessage = LastMessage(
                 text: message.text ?? "📷 Photo",
@@ -117,7 +123,7 @@ class PendingChatViewModel: ObservableObject {
                 timestamp: message.timestamp
             )
             try await conversationService.updateLastMessage(
-                conversationID: conversation.id!,
+                conversationID: conversationID,
                 lastMessage: lastMessage
             )
             print("✅ Updated lastMessage in conversation")
